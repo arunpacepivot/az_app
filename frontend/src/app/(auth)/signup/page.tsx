@@ -9,7 +9,21 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { authService } from '@/lib/services/auth'
 import { FirebaseError } from 'firebase/app'
 import { updateProfile } from 'firebase/auth'
-// import { auth } from '@/lib/firebase'
+
+const getErrorMessage = (error: FirebaseError) => {
+  switch (error.code) {
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists'
+    case 'auth/invalid-email':
+      return 'Invalid email address'
+    case 'auth/weak-password':
+      return 'Password should be at least 6 characters'
+    case 'auth/popup-closed-by-user':
+      return 'Sign up was cancelled'
+    default:
+      return error.message
+  }
+}
 
 export default function SignUp() {
   const router = useRouter()
@@ -27,14 +41,14 @@ export default function SignUp() {
     try {
       setIsLoading(true)
       setError('')
-      const userCredential = await authService.signUpWithEmail(formData.email, formData.password)
-      await updateProfile(userCredential, {
+      const user = await authService.signUpWithEmail(formData.email, formData.password)
+      await updateProfile(user, {
         displayName: formData.username
       })
       router.push('/dashboard')
     } catch (error) {
       if (error instanceof FirebaseError) {
-        setError(error.message)
+        setError(getErrorMessage(error))
       } else {
         setError('An unexpected error occurred')
       }
@@ -48,6 +62,40 @@ export default function SignUp() {
       ...prev,
       [e.target.name]: e.target.value
     }))
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true)
+      setError('')
+      await authService.signInWithGoogle()
+      router.push('/dashboard')
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        setError(getErrorMessage(error))
+      } else {
+        setError('An unexpected error occurred')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleFacebookSignIn = async () => {
+    try {
+      setIsLoading(true)
+      setError('')
+      await authService.signInWithFacebook()
+      router.push('/dashboard')
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        setError(getErrorMessage(error))
+      } else {
+        setError('An unexpected error occurred')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -75,16 +123,18 @@ export default function SignUp() {
           <div className="flex flex-col gap-4 mb-8">
             <button
               type="button"
-              onClick={() => authService.signInWithGoogle()}
-              className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all duration-200"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FcGoogle className="h-5 w-5" />
               Continue with Google
             </button>
             <button
               type="button"
-              onClick={() => authService.signInWithFacebook()}
-              className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#1877F2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1877F2]/90 transition-all duration-200"
+              onClick={handleFacebookSignIn}
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#1877F2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1877F2]/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaFacebook className="h-5 w-5" />
               Continue with Facebook

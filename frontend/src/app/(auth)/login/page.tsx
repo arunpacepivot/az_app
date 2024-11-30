@@ -9,6 +9,19 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { authService } from '@/lib/services/auth'
 import { FirebaseError } from 'firebase/app'
 
+const getErrorMessage = (error: FirebaseError) => {
+  switch (error.code) {
+    case 'auth/invalid-credential':
+      return 'Invalid email or password'
+    case 'auth/user-not-found':
+      return 'No account found with this email'
+    case 'auth/popup-closed-by-user':
+      return 'Sign in was cancelled'
+    default:
+      return error.message
+  }
+}
+
 export default function Login() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -44,6 +57,40 @@ export default function Login() {
     }))
   }
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true)
+      setError('')
+      await authService.signInWithGoogle()
+      router.push('/dashboard')
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        setError(getErrorMessage(error))
+      } else {
+        setError('An unexpected error occurred')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleFacebookSignIn = async () => {
+    try {
+      setIsLoading(true)
+      setError('')
+      await authService.signInWithFacebook()
+      router.push('/dashboard')
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        setError(getErrorMessage(error))
+      } else {
+        setError('An unexpected error occurred')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
@@ -69,16 +116,18 @@ export default function Login() {
           <div className="flex flex-col gap-4 mb-8">
             <button
               type="button"
-              onClick={() => authService.signInWithGoogle()}
-              className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all duration-200"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FcGoogle className="h-5 w-5" />
               Continue with Google
             </button>
             <button
               type="button"
-              onClick={() => authService.signInWithFacebook()}
-              className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#1877F2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1877F2]/90 transition-all duration-200"
+              onClick={handleFacebookSignIn}
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#1877F2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1877F2]/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaFacebook className="h-5 w-5" />
               Continue with Facebook
