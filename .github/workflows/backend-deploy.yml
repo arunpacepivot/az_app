@@ -1,0 +1,147 @@
+name: Backend CI/CD
+on:
+  push:
+    branches: [ main, staging ]
+    paths:
+      - 'backend/**'
+  pull_request:
+    branches: [ main, staging ]
+    paths:
+      - 'backend/**'
+
+env:
+  PYTHON_VERSION: '3.11'
+  AZURE_WEBAPP_PACKAGE_PATH: 'backend'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        cache-dependency-path: backend/requirements.txt
+
+    - name: Install dependencies
+      working-directory: backend
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      working-directory: backend
+      run: |
+        source venv/bin/activate
+        python manage.py test
+      env:
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        DJANGO_DEBUG: 'True'
+        DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+
+    - name: Run linting
+      working-directory: backend
+      run: |
+        source venv/bin/activate
+        pip install flake8
+        flake8 .
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        cache-dependency-path: backend/requirements.txt
+
+    - name: Install dependencies
+      working-directory: backend
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Set Web App Name
+      run: |
+        if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          echo "AZURE_WEBAPP_NAME=${{ secrets.AZURE_WEBAPP_NAME_PROD }}" >> $GITHUB_ENV
+        else
+          echo "AZURE_WEBAPP_NAME=${{ secrets.AZURE_WEBAPP_NAME_STAGING }}" >> $GITHUB_ENV
+        fi
+
+    - name: Collect static files
+      working-directory: backend
+      run: |
+        source venv/bin/activate
+        python manage.py collectstatic --noinput
+      env:
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        DJANGO_DEBUG: 'False'
+        DATABASE_URL: ${{ github.ref == 'refs/heads/main' && secrets.PROD_DATABASE_URL || secrets.STAGING_DATABASE_URL }}
+
+    - name: Check for pending migrations
+      working-directory: backend
+      run: |
+        source venv/bin/activate
+        python manage.py makemigrations --check --dry-run
+      env:
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        DATABASE_URL: ${{ github.ref == 'refs/heads/main' && secrets.PROD_DATABASE_URL || secrets.STAGING_DATABASE_URL }}
+
+    - name: Create deployment package
+      working-directory: backend
+      run: |
+        zip -r ../deployment.zip .
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ github.ref == 'refs/heads/main' && secrets.AZURE_BACKEND_PUBLISH_PROFILE_PROD || secrets.AZURE_BACKEND_PUBLISH_PROFILE_STAGING }}
+        package: deployment.zip
+        slot-name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    - name: Run migrations
+      working-directory: backend
+      run: |
+        source venv/bin/activate
+        python manage.py migrate
+      env:
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        DATABASE_URL: ${{ github.ref == 'refs/heads/main' && secrets.PROD_DATABASE_URL || secrets.STAGING_DATABASE_URL }}
+        DJANGO_DEBUG: 'False'
+
+    - name: Run Smoke Tests
+      if: success()
+      run: |
+        echo "Running smoke tests against ${{ env.AZURE_WEBAPP_NAME }}"
+        curl -f https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/health/
+
+    - name: Notify Deployment Status
+      if: always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const status = '${{ job.status }}'
+          const environment = '${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}'
+          const message = `Backend deployment to ${environment} ${status.toLowerCase()}`
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.name,
+            body: message
+          })

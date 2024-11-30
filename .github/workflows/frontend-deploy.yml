@@ -1,0 +1,110 @@
+name: Frontend CI/CD
+on:
+  push:
+    branches: [ main, staging ]
+    paths:
+      - 'frontend/**'
+  pull_request:
+    branches: [ main, staging ]
+    paths:
+      - 'frontend/**'
+
+env:
+  NODE_VERSION: '18.x'
+  AZURE_WEBAPP_PACKAGE_PATH: 'frontend'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+
+    - name: Run tests
+      working-directory: frontend
+      run: npm run test
+
+    - name: Run linting
+      working-directory: frontend
+      run: npm run lint
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+
+    - name: Build Next.js app
+      working-directory: frontend
+      run: npm run build
+      env:
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+        NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        NODE_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    - name: Set Web App Name
+      run: |
+        if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          echo "AZURE_WEBAPP_NAME=${{ secrets.AZURE_WEBAPP_NAME_PROD }}" >> $GITHUB_ENV
+        else
+          echo "AZURE_WEBAPP_NAME=${{ secrets.AZURE_WEBAPP_NAME_STAGING }}" >> $GITHUB_ENV
+        fi
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ github.ref == 'refs/heads/main' && secrets.AZURE_FRONTEND_PUBLISH_PROFILE_PROD || secrets.AZURE_FRONTEND_PUBLISH_PROFILE_STAGING }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        slot-name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    - name: Run Smoke Tests
+      if: success()
+      run: |
+        echo "Running smoke tests against ${{ env.AZURE_WEBAPP_NAME }}"
+        # Add your smoke tests here
+        # curl -f https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health
+
+    - name: Notify Deployment Status
+      if: always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const status = '${{ job.status }}'
+          const environment = '${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}'
+          const message = `Deployment to ${environment} ${status.toLowerCase()}`
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.name,
+            body: message
+          })
