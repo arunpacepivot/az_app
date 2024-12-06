@@ -20,7 +20,7 @@ def connectivity_test(request):
         
         return Response({
             "status": "success",
-            "message": f"Backend received: {message}",
+            "message": f"Backend message received: {message}",
             "echo": message
         }, status=status.HTTP_200_OK)
     except Exception as e:
