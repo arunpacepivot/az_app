@@ -28,7 +28,7 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <Link href="/" className="flex items-center">
-              <span className="text-xl font-bold">AI Assistant</span>
+              <span className="text-xl font-bold">Pacepivot AI Assistant</span>
             </Link>
           </div>
           
