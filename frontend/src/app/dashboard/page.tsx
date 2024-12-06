@@ -1,18 +1,34 @@
 'use client'
 
+import { useState } from 'react'
 import { useAuth } from '@/lib/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { apiService } from '@/lib/services/api'
 
 export default function Dashboard() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [connectivityResult, setConnectivityResult] = useState<string | null>(null)
+  const [connectivityError, setConnectivityError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login')
     }
   }, [user, loading, router])
+
+  const handleConnectivityTest = async () => {
+    try {
+      const result = await apiService.testConnectivity('Hello from frontend!')
+      setConnectivityResult(result.message)
+      setConnectivityError(null)
+    } catch (error) {
+      console.error('Connectivity test error:', error)
+      setConnectivityError('Connectivity test failed')
+      setConnectivityResult(null)
+    }
+  }
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
@@ -45,6 +61,27 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Account Info</h2>
               <p className="text-gray-600">Last login: {user?.metadata.lastSignInTime}</p>
             </div>
+          </div>
+          
+          <div className="mt-8">
+            <button 
+              onClick={handleConnectivityTest}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-500"
+            >
+              Test Backend Connectivity
+            </button>
+            
+            {connectivityResult && (
+              <div className="mt-4 p-4 bg-green-100 text-green-800 rounded">
+                {connectivityResult}
+              </div>
+            )}
+            
+            {connectivityError && (
+              <div className="mt-4 p-4 bg-red-100 text-red-800 rounded">
+                {connectivityError}
+              </div>
+            )}
           </div>
         </div>
       </div>
