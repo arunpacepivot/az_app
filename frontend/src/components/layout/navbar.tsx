@@ -43,6 +43,21 @@ export default function Navbar() {
                   >
                     Home
                   </Link>
+
+                  <Link 
+                    href="https://pacepivot.com/about-us/"
+                    className="text-yellow-400 hover:text-yellow-300"
+                  >
+                    About Us
+                  </Link>
+
+                  <Link 
+                    href="https://pacepivot.com/contact-us/"
+                    className="text-yellow-400 hover:text-yellow-300"
+                  >
+                    Contact Us
+                  </Link>
+
                   <Link 
                     href="/dashboard"
                     className="text-yellow-400 hover:text-yellow-300"
