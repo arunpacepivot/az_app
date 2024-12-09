@@ -36,7 +36,7 @@ export default function Navbar() {
           <div className="flex items-center">
             {!isAuthPage && (
               user ? (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-12">
                   <Link 
                     href="https://pacepivot.com/"
                     className="text-yellow-400 hover:text-yellow-300"
@@ -72,7 +72,7 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-12">
                   <Link 
                     href="/login"
                     className="text-yellow-400 hover:text-yellow-300"
