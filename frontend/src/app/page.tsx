@@ -33,10 +33,10 @@ export default function Home() {
           {/* Left side content */}
           <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-xl lg:flex-shrink-0 lg:pt-8">
             <h1 className="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              AI-Powered Solutions for Your Business
+              AI-Powered Solutions for Your Ecommerce Business
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Transform your workflow with cutting-edge AI technology. Streamline processes, 
+              Transform your ecommerce workflow with cutting-edge AI technology. Streamline processes, 
               gain insights, and unlock new possibilities for your business.
             </p>
             <div className="mt-10 flex items-center gap-x-6">
@@ -74,9 +74,9 @@ export default function Home() {
       <div className="bg-gray-50 py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-indigo-600">Deploy faster</h2>
+            <h2 className="text-base font-semibold leading-7 text-indigo-600">Scale faster</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Everything you need to deploy your AI
+              Everything you need to scale your ecommerce business
             </p>
             <p className="mt-6 text-lg leading-8 text-gray-600">
               Get started with our intuitive platform and powerful features designed to help you succeed.
