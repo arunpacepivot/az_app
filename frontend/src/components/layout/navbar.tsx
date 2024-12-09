@@ -1,5 +1,6 @@
 'use client'
 
+
 import Link from 'next/link'
 import { useAuth } from '@/lib/context/AuthContext'
 import { authService } from '@/lib/services/auth'
@@ -23,12 +24,12 @@ export default function Navbar() {
   const isAuthPage = pathname === '/login' || pathname === '/signup'
 
   return (
-    <nav className="bg-white shadow">
+    <nav className="bg-black text-yellow-400 shadow-md w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
             <Link href="/" className="flex items-center">
-              <span className="text-xl font-bold">Pacepivot AI Assistant</span>
+              <span className="text-xl font-bold text-yellow-400">Pacepivot AI Assistant</span>
             </Link>
           </div>
           
@@ -37,14 +38,20 @@ export default function Navbar() {
               user ? (
                 <div className="flex items-center space-x-4">
                   <Link 
+                    href="https://pacepivot.com/"
+                    className="text-yellow-400 hover:text-yellow-300"
+                  >
+                    Home
+                  </Link>
+                  <Link 
                     href="/dashboard"
-                    className="text-gray-700 hover:text-gray-900"
+                    className="text-yellow-400 hover:text-yellow-300"
                   >
                     Dashboard
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="text-gray-700 hover:text-gray-900"
+                    className="text-yellow-400 hover:text-yellow-300"
                   >
                     Logout
                   </button>
@@ -53,13 +60,13 @@ export default function Navbar() {
                 <div className="flex items-center space-x-4">
                   <Link 
                     href="/login"
-                    className="text-gray-700 hover:text-gray-900"
+                    className="text-yellow-400 hover:text-yellow-300"
                   >
                     Login
                   </Link>
                   <Link
                     href="/signup"
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-500"
+                    className="bg-yellow-400 text-black px-4 py-2 rounded-md hover:bg-yellow-300"
                   >
                     Sign up
                   </Link>
