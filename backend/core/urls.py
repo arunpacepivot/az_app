@@ -31,6 +31,7 @@ def api_root(request):
 # API Version patterns
 api_v1_patterns = [
     path('health/', include('health.urls')),
+    path('lister/', include('lister.urls')),
     # Add other app URLs here
 ]
 
