@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   trailingSlash: false,
   distDir: 'build',
+  eslint: {
+      ignoreDuringBuilds: false,
+    },
   env: {
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
