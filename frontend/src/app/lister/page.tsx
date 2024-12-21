@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 
+type Listing = Record<string, string>;
+
 export default function ListingGeneratorForm() {
     const { user, loading } = useAuth()
     const router = useRouter()
@@ -22,7 +24,7 @@ export default function ListingGeneratorForm() {
     const [asins, setAsins] = useState("");
     const [csrfToken, setCsrfToken] = useState<string | null>(null);
     const [error, setError] = useState("");
-    const [listings, setListings] = useState(null);
+    const [listings, setListings] = useState<Listing[] | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
 
@@ -42,7 +44,7 @@ export default function ListingGeneratorForm() {
     // const baseUrl = process.env.NODE_ENV === "development"
     //     ? process.env.NEXT_PUBLIC_BASE_URL_LOCAL
     //     : process.env.NEXT_PUBLIC_BASE_URL_PROD;
-    const baseUrl = "http://localhost:8000/";
+    const baseUrl = "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net";
    
 
 
@@ -109,7 +111,7 @@ export default function ListingGeneratorForm() {
         if (response.status === 200 && response.data) {
             console.log("Response Data:", response.data);
             if (Array.isArray(response.data) && response.data.length > 0) {
-            setListings(response.data);
+                setListings(response.data); 
             } else {
             setError("No listings found in the response.");
             }
@@ -117,7 +119,7 @@ export default function ListingGeneratorForm() {
             setError("Failed to get listings. Please try again.");
         }
         } catch (error) {
-        if (error) {
+        if (error instanceof AxiosError) {
             console.error("Axios Error generating listings:", error);
             if (error.response) {
             setError(`Server Error: ${error.response.status} - ${error.response.data}`);
@@ -126,7 +128,7 @@ export default function ListingGeneratorForm() {
             }
         } else {
             console.error("Unexpected error:", error);
-            setError(`Unexpected Error: ${error.message}`);
+            setError(`Unexpected Error: ${error instanceof Error ? error.message : String(error)}`);
         }
         }finally {
         setTimeout(() => {
