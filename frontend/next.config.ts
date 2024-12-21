@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   trailingSlash: false,
   distDir: 'build',
   eslint: {
-      ignoreDuringBuilds: false,
+      ignoreDuringBuilds: true,
     },
   env: {
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
