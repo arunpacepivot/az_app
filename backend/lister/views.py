@@ -2,7 +2,6 @@ from django.shortcuts import render
 from rest_framework import viewsets
 from .models import Product
 from .serializers import ProductSerializer
-import requests
 from bs4 import BeautifulSoup
 import cohere
 import os
@@ -10,14 +9,22 @@ import re
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from groq import Groq
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from playwright.async_api import async_playwright
 import asyncio
 from asgiref.sync import async_to_sync, sync_to_async
+from django.middleware.csrf import get_token
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+import json
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+
+@ensure_csrf_cookie
+def get_csrf(request):
+    return JsonResponse({'csrfToken': get_token(request)})
 
 # Use environment variables for sensitive information
 os.environ['GROQ_API_KEY'] = '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'
@@ -114,8 +121,9 @@ def clean_bullet_points(bullet_points_text):
     lines = bullet_points_text.split('\n')
     return '\n'.join(line.strip() for line in lines if bullet_point_pattern.match(line.strip()))
 
+
 @csrf_exempt
-@api_view(['POST'])
+@require_http_methods(['POST'])
 def process_asins(request):
     async def process_asin(asin, url):
         asin_input = request.data.get('asins', '')

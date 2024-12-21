@@ -9,6 +9,7 @@ def health_check(request):
         "message": "The service is running"
     }, status=status.HTTP_200_OK)
 
+
 @api_view(['POST'])
 def connectivity_test(request):
     """

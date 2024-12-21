@@ -24,7 +24,8 @@ def api_root(request):
         "message": "Welcome to the API",
         "version": "1.0",
         "endpoints": {
-            "health_check": "/api/v1/health/"
+            "health_check": "/api/v1/health/",
+            "lister": "api/v1/lister/"
         }
     })
 
@@ -38,5 +39,8 @@ api_v1_patterns = [
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),
-    path('', api_root),  # Add root endpoint
+    path('', api_root), 
+    path('lister/', include('lister.urls')),
+    path('get_csrf/', include('lister.get_csrf')),
+    # Add root endpoint
 ]

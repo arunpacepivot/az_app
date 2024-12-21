@@ -158,6 +158,15 @@ CORS_ALLOWED_ORIGINS = [
     # Example: "https://yourdomain.azurewebsites.net"
 ]
 
+CORS_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "https://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://127.0.0.1:3000",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
 # If you want to be more permissive during development
 CORS_ALLOW_ALL_ORIGINS = False  # Keep this False in production
 
