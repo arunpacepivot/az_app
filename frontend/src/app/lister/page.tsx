@@ -46,7 +46,7 @@ export default function ListingGeneratorForm() {
     //    ? //process.env.NEXT_PUBLIC_BASE_URL_LOCAL
   //     : //process.env.NEXT_PUBLIC_BASE_URL_PROD;
   
- const baseUrl = "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net";
+ const baseUrl = "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net/";
    
 
 
@@ -54,7 +54,7 @@ export default function ListingGeneratorForm() {
     async function fetchCsrfToken() {
       console.log("Fetching CSRF token from"+baseUrl+"scraper/get_csrf/");
         try {
-          const response = await axios.get(baseUrl + "scraper/get_csrf/", {
+          const response = await axios.get(`${baseUrl}scraper/get_csrf/`, {
             withCredentials: true,
           });
           console.log("CSRF Response:", response);
@@ -98,7 +98,7 @@ export default function ListingGeneratorForm() {
     
         try {
         const response = await axios.post(
-            baseUrl + "api/v1/lister/",
+            `${baseUrl}api/v1/lister/`,
             payload,
             {
             headers: {
