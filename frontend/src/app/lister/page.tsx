@@ -43,8 +43,8 @@ export default function ListingGeneratorForm() {
     ];
 
    // const baseUrl = process.env.NODE_ENV === "development"
-        ? process.env.NEXT_PUBLIC_BASE_URL_LOCAL
-       : process.env.NEXT_PUBLIC_BASE_URL_PROD;
+    //    ? //process.env.NEXT_PUBLIC_BASE_URL_LOCAL
+  //     : //process.env.NEXT_PUBLIC_BASE_URL_PROD;
   
  const baseUrl = "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net";
    
