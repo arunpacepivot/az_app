@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
+import { json } from "stream/consumers"
 
 type Listing = Record<string, string>;
 
@@ -50,12 +51,13 @@ export default function ListingGeneratorForm() {
 
   useEffect(() => {
     async function fetchCsrfToken() {
+      console.log("Fetching CSRF token from"+baseUrl+"scraper/get_csrf/");
         try {
-          const response = await fetch(baseUrl + "scraper/get_csrf/", {
-            method: "GET",
-            credentials: "include",
+          const response = await axios.get(baseUrl + "scraper/get_csrf/", {
+            withCredentials: true,
           });
-          const data = await response.json();
+          console.log("CSRF Response:", response);
+          const data = response.data;
           if (!data.csrfToken) {
             console.error("No CSRF token found in the response.");
             return;
@@ -107,6 +109,8 @@ export default function ListingGeneratorForm() {
     
         clearInterval(progressInterval);
         setProgress(100);
+
+        console.log("Listings Data:", response.data);
     
         if (response.status === 200 && response.data) {
             console.log("Response Data:", response.data);
