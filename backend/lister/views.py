@@ -23,8 +23,18 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
 
 @ensure_csrf_cookie
+@require_http_methods(['GET', 'OPTIONS'])
 def get_csrf(request):
-    return JsonResponse({'csrfToken': get_token(request)})
+    if request.method == "OPTIONS":
+        response = JsonResponse({})
+    else:
+        response = JsonResponse({'csrfToken': get_token(request)})
+    
+    response["Access-Control-Allow-Origin"] = request.headers.get('Origin')
+    response["Access-Control-Allow-Credentials"] = "true"
+    response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken"
+    return response
 
 # Use environment variables for sensitive information
 os.environ['GROQ_API_KEY'] = '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'
@@ -123,8 +133,16 @@ def clean_bullet_points(bullet_points_text):
 
 
 @csrf_exempt
-@require_http_methods(['POST'])
+@require_http_methods(['POST', 'OPTIONS'])
 def process_asins(request):
+    if request.method == "OPTIONS":
+        response = JsonResponse({})
+        response["Access-Control-Allow-Origin"] = request.headers.get('Origin')
+        response["Access-Control-Allow-Credentials"] = "true"
+        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken"
+        return response
+        
     async def process_asin(asin, url):
         asin_input = request.data.get('asins', '')
         geography = request.data.get('geography', 'United States')
