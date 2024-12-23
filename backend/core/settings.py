@@ -154,7 +154,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://localhost:3000",
     "http://127.0.0.1:3000",
     "https://127.0.0.1:3000",
-    "https://next-frontend-app-a2h4eca5bbe4ektj.centralindia-01.azurewebsites.net",
+    "https://next-frontend-app-a2h4eca5bbe4ekfj.centralindia-01.azurewebsites.net",
     # Add your frontend production domain here
 
     # Example: "https://yourdomain.azurewebsites.net"
@@ -165,7 +165,7 @@ CORS_TRUSTED_ORIGINS = [
     "https://localhost:3000",
     "http://127.0.0.1:3000",
     "https://127.0.0.1:3000",
-    "https://next-frontend-app-a2h4eca5bbe4ektj.centralindia-01.azurewebsites.net",
+    "https://next-frontend-app-a2h4eca5bbe4ekfj.centralindia-01.azurewebsites.net",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

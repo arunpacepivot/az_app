@@ -52,9 +52,9 @@ export default function ListingGeneratorForm() {
 
   useEffect(() => {
     async function fetchCsrfToken() {
-      console.log("Fetching CSRF token from"+baseUrl+"scraper/get_csrf/");
+      console.log("Fetching CSRF token from"+baseUrl+"get_csrf/");
         try {
-          const response = await axios.get(`${baseUrl}scraper/get_csrf/`, {
+          const response = await axios.get(`${baseUrl}get_csrf/`, {
             withCredentials: true,
           });
           console.log("CSRF Response:", response);
