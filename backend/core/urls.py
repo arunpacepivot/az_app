@@ -17,6 +17,7 @@ Including another URLconf
 from django.urls import path, include
 from django.http import JsonResponse
 from django.contrib import admin
+from lister.views import get_csrf  # Import the CSRF view directly
 
 # Root view
 def api_root(request):
@@ -25,7 +26,8 @@ def api_root(request):
         "version": "1.0",
         "endpoints": {
             "health_check": "/api/v1/health/",
-            "lister": "api/v1/lister/"
+            "lister": "api/v1/lister/",
+            "csrf": "/get_csrf/"
         }
     })
 
@@ -33,14 +35,12 @@ def api_root(request):
 api_v1_patterns = [
     path('health/', include('health.urls')),
     path('lister/', include('lister.urls')),
-    # Add other app URLs here
 ]
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),
     path('', api_root),
-    path('get_csrf/', include('lister.urls')),  # This will make /get_csrf/ directly accessible
-    path('process_asins/', include('lister.urls')),
+    path('get_csrf/', get_csrf, name='get_csrf'),  # Add the CSRF view directly here
 ]
            
