@@ -28,7 +28,7 @@ def get_csrf(request):
     if request.method == "OPTIONS":
         response = JsonResponse({})
     else:
-        response = JsonResponse({'csrfToken': get_to    ken(request)})
+        response = JsonResponse({'csrfToken': get_token(request)})
     
     response["Access-Control-Allow-Origin"] = request.headers.get('Origin')
     response["Access-Control-Allow-Credentials"] = "true"
