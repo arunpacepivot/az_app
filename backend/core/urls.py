@@ -39,8 +39,8 @@ api_v1_patterns = [
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),
-    path('', api_root), 
-    path('lister/', include('lister.urls')),
-    path('get_csrf/', include('lister.get_csrf')),
-    # Add root endpoint
+    path('', api_root),
+    path('get_csrf/', include('lister.urls')),  # This will make /get_csrf/ directly accessible
+    path('process_asins/', include('lister.urls')),
 ]
+           
