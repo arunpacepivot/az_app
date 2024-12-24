@@ -6,6 +6,6 @@ router = DefaultRouter()
 router.register(r'products', ProductViewSet)
 
 urlpatterns = [
+    path('process_asins/', process_asins, name='process_asins'),
     path('', include(router.urls)),
-    path('', process_asins, name='process_asins'),
 ]

@@ -98,7 +98,7 @@ export default function ListingGeneratorForm() {
     
         try {
         const response = await axios.post(
-            `${baseUrl}api/v1/lister/`,
+            `${baseUrl}api/v1/lister/process_asins/`,
             payload,
             {
             headers: {
