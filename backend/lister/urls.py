@@ -7,5 +7,5 @@ router.register(r'products', ProductViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('process_asins/', process_asins, name='process_asins'),
+    path('', process_asins, name='process_asins'),
 ]
