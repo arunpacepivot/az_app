@@ -10,7 +10,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from groq import Groq
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from playwright.async_api import async_playwright
+# from playwright.async_api import async_playwright
+import requests
 import asyncio
 from asgiref.sync import async_to_sync, sync_to_async
 from django.middleware.csrf import get_token
@@ -67,14 +68,16 @@ async def fetch_html(url: str) -> str:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        await page.set_extra_http_headers(headers)
-        await page.goto(url)
-        content = await page.content()
-        await browser.close()
-        return content
+    # async with async_playwright() as p:
+    #     browser = await p.chromium.launch(headless=True)
+    #     page = await browser.new_page()
+    #     await page.set_extra_http_headers(headers)
+    #     await page.goto(url)
+    #     content = await page.content()
+    #     await browser.close()
+    #     return content
+    response = requests.get(url, headers=headers)
+    return response.text
 
 async def parse_html(url: str) -> str:
     html = await fetch_html(url)
