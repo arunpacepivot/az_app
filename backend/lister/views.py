@@ -255,8 +255,8 @@ def process_asins(request):
         country = get_country_code(geography)
         urls = construct_urls(asin_list, country)
 
-            tasks = [process_asin(asin, url) for asin, url in zip(asin_list, urls)]
-            return await asyncio.gather(*tasks)
+        tasks = [process_asin(asin, url) for asin, url in zip(asin_list, urls)]
+        return await asyncio.gather(*tasks)
 
     data = async_to_sync(process_asins_async)()
     return Response(data)
