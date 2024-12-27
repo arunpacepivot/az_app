@@ -136,7 +136,7 @@ def clean_bullet_points(bullet_points_text):
 
 
 @csrf_exempt
-@api_view(['POST', 'OPTIONS']) 
+@api_view(['POST', 'OPTIONS']) #added api_view
 @require_http_methods(['POST', 'OPTIONS'])
 def process_asins(request):
     if request.method == "OPTIONS":
