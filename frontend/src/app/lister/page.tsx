@@ -235,15 +235,15 @@ export default function ListingGeneratorForm() {
                 id="asins"
                 value={asins}
                 onChange={handleInputChange}
-                rows={5}
-                className="w-[60%] bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
+                rows={7}
+                className="w-[75%] bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                 placeholder="Enter ASINs separated by comma"
               />
             </div>
             <Button
             type="submit"
             disabled={isProcessing}
-            className="w-[30%] bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center"
+            className="w-[20%] bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center"
             >
             {isProcessing ? (
                 <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></span>
