@@ -52,17 +52,17 @@ export default function ListingGeneratorForm() {
  const features = [
   {
     name: 'Boost Sales & Profitability (Guaranteed)',
-    description: 'Connect and deploy your AI models with just a few clicks. No complex setup required.',
+    description: 'Achieve rapid growth with combination of strategic AI-powered solutions tailored for you.',
     icon: ChartBarIcon
   },
   {
     name: 'Effortless Listing Generation',
-    description: 'Get detailed insights and performance metrics to optimize your AI solutions.',
+    description: 'Generate optimized, high-quality listings effortlessly with powerful AI-driven tools.',
     icon: ShieldCheckIcon
   },
   {
     name: 'Self-learning Ads Management',
-    description: 'Enterprise-grade security with scalable infrastructure to grow with your needs.',
+    description: 'Optimize ad campaigns intelligently with self-learning AI for enhanced performance.',
     icon: BoltIcon
   },
 ]   
