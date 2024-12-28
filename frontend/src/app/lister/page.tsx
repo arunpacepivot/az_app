@@ -306,6 +306,14 @@ export default function ListingGeneratorForm() {
             <p className="mt-6 text-lg leading-8 text-gray-300"> {/* Subtle gray for secondary text */} {/* //CHANGE */}
               Tired of lackluster results? Pace Pivot's free listing generator equips you to skyrocket sales and conversions. Get started instantly - no credit card needed.
             </p>
+            <div className="mt-10">
+              <a
+                href="https://pacepivot.com/contact-us/"
+                className="inline-block rounded-md bg-yellow-400 px-6 py-3 text-base font-semibold text-gray-900 shadow-sm hover:bg-yellow-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-400"
+              >
+                Contact Us
+              </a>
+            </div>
           </div>
           {/* Feature Section */}
             <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
