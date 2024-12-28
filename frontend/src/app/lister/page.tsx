@@ -250,12 +250,14 @@ export default function ListingGeneratorForm() {
               <Progress value={progress} className="w-full" />
             </div>
           )}
+          <div className="overflow-x-auto">
           {!isProcessing && listings && listings.length > 0 && ( 
             <div className="mt-6"> 
               <h3 className="text-yellow-400 text-lg font-semibold">Generated Listings</h3> 
               {renderTable()} 
-            </div> 
+            </div>
           )}
+          </div>
           {error && (
             <div className="mt-6 text-red-500">
               <p>{error}</p>
