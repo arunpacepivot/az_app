@@ -184,7 +184,7 @@ export default function ListingGeneratorForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex items-center justify-center">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-5xl">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-center text-yellow-400">
             Amazon India AI Listing Generator
