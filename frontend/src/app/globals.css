@@ -82,14 +82,14 @@
 }
 
 .listings-table {
-  width: 100%; /* Full width of the container */
+  width: 100%; /* Full width inside its container */
   border-collapse: collapse;
   background-color: #1f2937;
   border: 1px solid #374151;
   color: #f3f4f6;
   font-size: 14px;
   text-align: left;
-  table-layout: fixed; /* Ensures columns have equal or set widths */ /* //CHANGE */
+  table-layout: fixed; /* Enables fixed layout for consistent column widths */ /* //CHANGE */
 }
 
 .listings-table th {
@@ -99,16 +99,16 @@
   padding: 0.75rem 1rem;
   text-transform: uppercase;
   border: 1px solid #4b5563;
-  word-wrap: break-word; /* Enable word wrapping in header */ /* //CHANGE */
-  overflow: hidden; /* Prevent text from spilling */ /* //CHANGE */
+  white-space: nowrap; /* Prevent header text wrapping */ /* //CHANGE */
+  overflow: hidden; /* Prevent overflow */ /* //CHANGE */
 }
 
 .listings-table td {
   padding: 0.75rem 1rem;
   border: 1px solid #4b5563;
-  white-space: normal; /* Allow text wrapping for content */ /* //CHANGE */
-  word-wrap: break-word; /* Enable word wrapping in cells */ /* //CHANGE */
-  overflow: hidden; /* Prevent text from spilling */ /* //CHANGE */
+  white-space: normal; /* Enable word wrapping */ /* //CHANGE */
+  word-wrap: break-word; /* Handle long words gracefully */ /* //CHANGE */
+  overflow: hidden; /* Prevent overflow */ /* //CHANGE */
 }
 
 .listings-table tbody tr:nth-child(even) {

@@ -152,26 +152,34 @@ export default function ListingGeneratorForm() {
         if (!listings || !Array.isArray(listings) || listings.length === 0) return null;        
     
         const headers = Object.keys(listings[0]);
+        const baseColumnWidth = '150px';
+        const lastColumnWidth = `calc(${baseColumnWidth} * 5)`;
     
         return (
+          <div className="overflow-x-auto">
           <table className="listings-table">
             <thead>
               <tr>
-                {headers.map((header) => (
-                  <th key={header} scope="col">{header.replace(/_/g, ' ')}</th>
+                {headers.map((header, index) => (
+                  <th key={header} 
+                  style={{ width: index === headers.length - 1 ? lastColumnWidth : baseColumnWidth }}
+                  scope="col">{header.replace(/_/g, ' ')}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {listings.map((listing, index) => (
                 <tr key={index}>
-                  {headers.map((header) => (
-                    <td key={header}>{listing[header] || '-'}</td>
+                  {headers.map((header, columnIndex) => (
+                    <td key={header}
+                    style={{ width: columnIndex === headers.length - 1 ? lastColumnWidth : baseColumnWidth }}
+                    >{listing[header] || '-'}</td>
                   ))}
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         );
       };
     
@@ -228,14 +236,14 @@ export default function ListingGeneratorForm() {
                 value={asins}
                 onChange={handleInputChange}
                 rows={5}
-                className="w-full bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
+                className="w-[60%] bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                 placeholder="Enter ASINs separated by comma"
               />
             </div>
             <Button
             type="submit"
             disabled={isProcessing}
-            className="w-full bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center"
+            className="w-[30%] bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center"
             >
             {isProcessing ? (
                 <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></span>
