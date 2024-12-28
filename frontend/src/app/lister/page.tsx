@@ -158,7 +158,7 @@ export default function ListingGeneratorForm() {
             <thead>
               <tr>
                 {headers.map((header) => (
-                  <th key={header}>{header}</th>
+                  <th key={header} scope="col">{header.replace(/_/g, ' ')}</th>
                 ))}
               </tr>
             </thead>
@@ -166,7 +166,7 @@ export default function ListingGeneratorForm() {
               {listings.map((listing, index) => (
                 <tr key={index}>
                   {headers.map((header) => (
-                    <td key={header}>{listing[header]}</td>
+                    <td key={header}>{listing[header] || '-'}</td>
                   ))}
                 </tr>
               ))}
@@ -250,7 +250,7 @@ export default function ListingGeneratorForm() {
               <Progress value={progress} className="w-full" />
             </div>
           )}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-gray-700 shadow-lg">
           {!isProcessing && listings && listings.length > 0 && ( 
             <div className="mt-6"> 
               <h3 className="text-yellow-400 text-lg font-semibold">Generated Listings</h3> 
