@@ -208,6 +208,7 @@ export default function ListingGeneratorForm() {
   }
 
   return (
+    <main className="flex-1">
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex items-center justify-center">
       <Card className="w-full max-w-5xl">
         <CardHeader>
@@ -290,6 +291,9 @@ export default function ListingGeneratorForm() {
           )}
         </CardContent>
       </Card>
+      </div>
+
+      {/* Feature Section */}
       <div className="bg-gray-50 py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
@@ -318,7 +322,6 @@ export default function ListingGeneratorForm() {
           </div>
         </div>
       </div>
-    </div>
-    
+    </main>
   )
 } 
