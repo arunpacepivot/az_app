@@ -80,6 +80,41 @@
     --chart-5: 340 75% 55%;
   }
 }
+
+.listings-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  color: #f3f4f6;
+  font-size: 14px;
+  text-align: left;
+}
+
+.listings-table th {
+  background-color: #374151;
+  color: #f3f4f6;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  text-transform: uppercase;
+  border: 1px solid #4b5563;
+}
+
+.listings-table td {
+  padding: 0.75rem 1rem;
+  border: 1px solid #4b5563;
+  white-space: nowrap;
+}
+
+.listings-table tbody tr:nth-child(even) {
+  background-color: #2d3748;
+}
+
+.listings-table tbody tr:hover {
+  background-color: #4b5563;
+  cursor: pointer;
+}
+
  
 @layer base {
   * {
