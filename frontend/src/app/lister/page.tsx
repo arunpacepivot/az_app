@@ -248,7 +248,17 @@ export default function ListingGeneratorForm() {
             <div className="mt-6 space-y-2">
               <Label className="text-yellow-400">Generating listings...</Label>
               <Progress value={progress} className="w-full" />
-              {renderTable()}
+            </div>
+          )}
+          {!isProcessing && listings && listings.length > 0 && ( 
+            <div className="mt-6"> 
+              <h3 className="text-yellow-400 text-lg font-semibold">Generated Listings</h3> 
+              {renderTable()} 
+            </div> 
+          )}
+          {error && (
+            <div className="mt-6 text-red-500">
+              <p>{error}</p>
             </div>
           )}
         </CardContent>
