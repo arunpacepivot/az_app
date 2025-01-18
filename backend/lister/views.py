@@ -59,6 +59,20 @@ def get_country_code(geography):
         "Australia": "com.au"
     }
     return country_mapping.get(geography, "com")
+def get_country_index(geography):
+    country_mapping = {
+        "India": "IN",
+        "United States": "US",
+        "United Kingdom": "GB",
+        "Germany": "DE",
+        "France": "FR",
+        "Italy": "IT",
+        "Spain": "ES",
+        "Japan": "JP",
+        "Canada": "CA",
+        "Australia": "AU"
+    }
+    return country_mapping.get(geography, "US")
 
 def construct_urls(asin_list, country):
     base_url = f"https://www.amazon.{country}/dp/"
@@ -78,6 +92,39 @@ async def fetch_html(url: str) -> str:
     #     return content
     response = requests.get(url, headers=headers)
     return response.text
+
+async def get_product_details(asin: str, country: str) -> str:
+    index = get_country_index(country)
+    url = "https://parazun-amazon-data.p.rapidapi.com/product/"
+
+    querystring = {"asin":asin,"region":index}
+
+    headers = {
+        "x-rapidapi-key": "af4fbe3844mshf4344d73d9d4c4ep1f36d5jsn0e2c306346e7",
+        "x-rapidapi-host": "parazun-amazon-data.p.rapidapi.com"
+    }
+
+    response = requests.get(url, headers=headers, params=querystring)
+    # Check the status of the response
+    if response.status_code == 200:
+        data=response.json()
+    else:
+        print(f"Request failed with status code: {response.status_code}")
+
+    def extract_text_from_json(json_obj, text_list):
+        if isinstance(json_obj, dict):
+            for key, value in json_obj.items():
+                extract_text_from_json(value, text_list)
+        elif isinstance(json_obj, list):
+            for item in json_obj:
+                extract_text_from_json(item, text_list)
+        elif isinstance(json_obj, str):
+            text_list.append(json_obj)
+
+    text_list = []
+    extracted_text = extract_text_from_json(data, text_list)
+
+    return extracted_text
 
 async def parse_html(url: str) -> str:
     html = await fetch_html(url)
@@ -147,19 +194,19 @@ def process_asins(request):
         response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken"
         return response
         
-    async def process_asin(asin, url):
+    async def process_asin(asin, country):
         asin_input = request.data.get('asins', '')
         geography = request.data.get('geography', 'United States')
-        email = request.data.get('email', '')
+        # email = request.data.get('email', '')
         if isinstance(asin_input, str):
             asin_list = [asin.strip() for asin in asin_input.split(',') if asin.strip()]
         else:
             asin_list = asin_input 
         
-        country = get_country_code(geography)
-        urls = construct_urls(asin_list, country)
+        country = get_country_index(geography)
+        # urls = construct_urls(asin_list, country)
 
-        data = []
+        # data = []
 
         title_prompt = """please write Amazon Product Title for the product summary of whose USP is given.When writing product Titles, pretend like you are the highest paid e-commerce copywriter on planet Earth. NOBODY writes more compelling, sexy, hypnotic product Titles than you. You are the best of the best, the cream of the crop.
                     The purpose of product Titles is to convince Amazon shoppers to click on the product. The Product Titles should be so hypnotic and compelling that shoppers IMMEDIATELY click to purchase because they desire the product so much. Product Titles should be slick, catchy, creative, sexy and CONVINCE me to click based on the data from your Amazon review analysis.
@@ -208,55 +255,61 @@ def process_asins(request):
 
                             3. The product description should SIZZLE! Sounds catchy, fun, and sexy NOT dull or boring or corporate."""
 
-        html = await fetch_html(url)
-        if html:
-            parsed_text = await parse_html(url)
-            summary = summarize_text(parsed_text)
+        # html = await fetch_html(url)
+        # if html:
+        #     parsed_text = await parse_html(url)
+        #     summary = summarize_text(parsed_text)
+        for asin in asin_list:
+            text_list = await get_product_details(asin, country)
+            if text_list:
+                summary = summarize_text(text_list)
+                if summary:
+                    product_title = groq_output(summary, title_prompt)
+                    bullet_points_response = groq_output(summary, Bullet_prompt)
+                    cleaned_bullet_points = clean_bullet_points(bullet_points_response)
+                    bullet_points = [bp.strip() for bp in cleaned_bullet_points.split('\n') if bp.strip()]
+                    bullet_points.extend([''] * (7 - len(bullet_points)))  # Ensure there are always 7 bullet points
+                    product_description = groq_output(summary, Description_prompt)
 
-            if summary:
-                product_title = groq_output(summary, title_prompt)
-                bullet_points_response = groq_output(summary, Bullet_prompt)
-                cleaned_bullet_points = clean_bullet_points(bullet_points_response)
-                bullet_points = [bp.strip() for bp in cleaned_bullet_points.split('\n') if bp.strip()]
-                bullet_points.extend([''] * (7 - len(bullet_points)))  # Ensure there are always 7 bullet points
-                product_description = groq_output(summary, Description_prompt)
+                    await sync_to_async(Product.objects.create)(
+                        asin=asin,
+                        geography=geography,
+                        # email=email,
+                        title=product_title,
+                        bullet_point_1=bullet_points[0] if bullet_points[0] else 'No bullet point available',
+                        bullet_point_2=bullet_points[1] if bullet_points[1] else 'No bullet point available',
+                        bullet_point_3=bullet_points[2] if bullet_points[2] else 'No bullet point available',
+                        bullet_point_4=bullet_points[3] if bullet_points[3] else 'No bullet point available',
+                        bullet_point_5=bullet_points[4] if bullet_points[4] else 'No bullet point available',
+                        description=product_description,
+                    )
 
-                await sync_to_async(Product.objects.create)(
-                    asin=asin,
-                    geography=geography,
-                    email=email,
-                    title=product_title,
-                    bullet_point_1=bullet_points[0] if bullet_points[0] else 'No bullet point available',
-                    bullet_point_2=bullet_points[1] if bullet_points[1] else 'No bullet point available',
-                    bullet_point_3=bullet_points[2] if bullet_points[2] else 'No bullet point available',
-                    bullet_point_4=bullet_points[3] if bullet_points[3] else 'No bullet point available',
-                    bullet_point_5=bullet_points[4] if bullet_points[4] else 'No bullet point available',
-                    description=product_description,
-                )
-
-                return {
-                    'ASIN': asin,
-                    'Product Title': product_title,
-                    'Bullet Point 1': bullet_points[0] if bullet_points[0] else 'No bullet point available',
-                    'Bullet Point 2': bullet_points[1] if bullet_points[1] else 'No bullet point available',
-                    'Bullet Point 3': bullet_points[2] if bullet_points[2] else 'No bullet point available',
-                    'Bullet Point 4': bullet_points[3] if bullet_points[3] else 'No bullet point available',
-                    'Bullet Point 5': bullet_points[4] if bullet_points[4] else 'No bullet point available',
-                    'Product Description': product_description,
-                }
+                    return {
+                        'ASIN': asin,
+                        'Product Title': product_title,
+                        'Bullet Point 1': bullet_points[0] if bullet_points[0] else 'No bullet point available',
+                        'Bullet Point 2': bullet_points[1] if bullet_points[1] else 'No bullet point available',
+                        'Bullet Point 3': bullet_points[2] if bullet_points[2] else 'No bullet point available',
+                        'Bullet Point 4': bullet_points[3] if bullet_points[3] else 'No bullet point available',
+                        'Bullet Point 5': bullet_points[4] if bullet_points[4] else 'No bullet point available',
+                        'Product Description': product_description,
+                    }
             return None
 
     async def process_asins_async():
         asin_input = request.data.get('asins', '')
         geography = request.data.get('geography', 'United States')
-        email = request.data.get('email', '')
+        # email = request.data.get('email', '')
         asin_list = [asin.strip() for asin in asin_input.split(',')] if isinstance(asin_input, str) else asin_input
         
-        country = get_country_code(geography)
-        urls = construct_urls(asin_list, country)
+        country = get_country_index(geography)
+        # urls = construct_urls(asin_list, country)
 
-        tasks = [process_asin(asin, url) for asin, url in zip(asin_list, urls)]
+        tasks = [process_asin(asin, country) for asin in asin_list]
+        
         return await asyncio.gather(*tasks)
 
     data = async_to_sync(process_asins_async)()
     return Response(data)
+if __name__ == "__main__":
+    process_asins()
