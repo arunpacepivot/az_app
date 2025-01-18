@@ -170,18 +170,44 @@ def process_asins(request):
 
                     From the USP provided, identify the brand name and product
 
-                    You need to build the product title in 2 parts. 1) The title should always start with brand name followed by describing product in exactly 5 or 6 words. first part should not use more than 40 characters and should always be followed by , 2) combine key phrases together with propositions so that they bring out USP of the product and make sense on reading for customers . Join these 2 parts sequentially to output the product title which is larger than 185 character and less than 200 character. Only use "-" or "," or "|" as separators. Do not use any other special character. MAKE SURE THEY SOUND NATURAL AND PROFESSIONAL! Don't just randomly stuff keywords into the Product Titles.
+                    You need to build the product title in 2 parts. 1) The title should always start with brand name followed by describing product in exactly 5 or 6 words. first part should not use more than 40-60 characters and should always be followed by , 2) combine key phrases together with propositions so that they bring out USP of the product and make sense on reading for customers . Join these 2 parts sequentially to output the product title which is larger than 185 character and less than 200 character. Only use "-" or "," or "|" as separators. Do not use any other special character. MAKE SURE THEY SOUND NATURAL AND PROFESSIONAL! Don't just randomly stuff keywords into the Product Titles.
+
+                    Titles should avoid using the same word more than twice. Prepositions, articles, and conjunctions are exceptions. Use the keywords naturally within the title, prioritizing them at the beginning of the title.
+
+                    Use Title Case: Capitalize the first letter of each significant word while keeping conjunctions and prepositions in lowercase. This enhances readability
+
+                    Also comply with product category specific title requirements outlined in Amazon's style guide.
+
+                    Include key product details such as the product type, main features, size, color, and quantity. This information should be relevant to what customers are searching for. Consider what potential customers are looking for when they search. The title should answer their queries and provide valuable information that encourages them to click.
+
+                    Avoid Fluff and Promotional Language: Exclude subjective phrases like "Best Seller" or promotional offers such as "Free Shipping." These do not add value to the title and can make it less credible
 
                     DO NOT add any text before or after the output. Only give out product Titles as output.
                     
                     Ready? Set? Go! Write me the most compelling Amazon Product Titles the world has ever seen!"""
-        Bullet_prompt = """please write 5 Amazon bullet points for the product  that is described earlier in the context.
+        Bullet_prompt = """please write 7 Amazon bullet points for the product  that is described earlier in the context.
 
                     2. When writing bullet points, pretend like you are the highest paid e-commerce copywriter on planet Earth. NOBODY writes more compelling, sexy, hypnotic bullet points than you. You are the best of the best, the cream of the crop. 2. The purpose of bullet points is to convince Amazon shoppers to buy my product over every other option.
 
                     The bullet points should be so hypnotic and compelling that shoppers IMMEDIATELY pull out their credit cards to purchase because they desire the product so much.
 
-                    Bullet points should be slick, catchy, creative, sexy and CONVINCE me to buy based on the data from your Amazon review analysis.
+                    Bullet points should be slick, catchy, creative, sexy and CONVINCE me to buy based on the data from the Amazon review analysis.
+
+                    Bullet points should emphasize the benefits of the product.
+
+                    Use action words like protect, enhance, improve, etc to make the bullet points more compelling and appeal to buyers. Incorporate words that evoke emotions or imagery, helping customers visualize the benefits of the product in their lives.
+
+                    Make every word count by being clear and direct. Avoid unnecessary jargon or overly complex sentences.
+
+                    Use bullet points to highlight the benefits of the product. Focus on how the product solves customer problems or meets their needs, rather than just listing features.
+
+                    Do not include pricing, promotional offers, or marketing jargon. The content should be factual and straightforward.
+
+                    Tailor bullet points to resonate with the target buyer persona. Speak directly to their desires and needs, confirming that the product is the right choice for them.
+
+                    Bullet points should clearly list the 7 most important features or benefits of the product. This should include unique selling propositions (USPs) that differentiate the product from competitors.
+
+                    Mention specifics like quantity, sizing, colors, and materials to provide comprehensive information to the customers.
 
                     3. Format should be:
 
@@ -197,7 +223,9 @@ def process_asins(request):
 
                     6. DO NOT add any text before or after the output. Only give out product bullet points as output. DO NOT add "Here are the 5 Amazon bullet points:" before the bullet point output
 
-                    Where it makes sense, include top-searched, highly relevant keywords throughout the bullet points. MAKE SURE THEY SOUND NATURAL AND PROFESSIONAL! Dont just randomly stuff keywords into the bullet points. Ready? Set? Go! Write me the 7 most compelling Amazon bullet points the world has ever seen! """
+                    As far as possible, ensure all bullet points are of similar length to maintain a clean appearance.
+
+                    Where it makes sense, include top-searched, highly relevant keywords throughout the bullet points. The key phrases should appear in first 100 characters of the bullet point. MAKE SURE THEY SOUND NATURAL AND PROFESSIONAL! Dont just randomly stuff keywords into the bullet points. Ready? Set? Go! Write me the 7 most compelling Amazon bullet points the world has ever seen! """
         Description_prompt = """Based on the USP summary provided , please write a KILLER Amazon product description that describes the product  product WHILE convincing shoppers to buy my product over every other option.
 
                             1. The product description should be between 1,900 characters and 2,000 characters.
@@ -206,7 +234,26 @@ def process_asins(request):
 
                             The Amazon product description should NOT be more than 2,000 characters in total length. 
 
+                            Aim for a concise yet informative description that captures key details without overwhelming the reader.
+
+                            Avoid including promotional messages, testimonials, external links, or references to competitors. Focus solely on the product itself.
+
+                            Use straightforward language to describe the product. Avoid jargon and complex sentences to ensure clarity
+
+                            Clearly articulate what makes the product unique. Highlight features that differentiate it from competitors
+
+                            Instead of merely listing features, explain how the product solves problems or improves the customer's life. This approach helps create an emotional connection with potential buyers
+
+                            Place the most important details at the beginning of your description to capture attention quickly
+
+                            Understand who your customers are and what they are looking for. Write in a tone and style that resonates with them, addressing their needs and preferences directly
+
+                            Keep the tone informative rather than salesy; focus on providing value through clear information about the product
+
+
+
                             2. Please repeat  top-searched, relevant keywords multiple times throughout the description to help me rank this Amazon listing organically on Google:
+                            Make sure to use story telling in the description to show how the product solves the problem. Use storytelling techniques where appropriate to engage readers. Describe scenarios where the product would be beneficial, helping customers envision its use in their lives
 
                             3. The product description should SIZZLE! Sounds catchy, fun, and sexy NOT dull or boring or corporate."""
 
