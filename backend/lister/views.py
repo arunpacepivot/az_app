@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework import viewsets
 from .models import Product
 from .serializers import ProductSerializer
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 import cohere
 import os
 import re
@@ -18,6 +18,7 @@ from django.middleware.csrf import get_token
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 import json
+from .api import get_text
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
@@ -65,9 +66,9 @@ def construct_urls(asin_list, country):
     return [base_url + asin for asin in asin_list]
 
 async def fetch_html(url: str) -> str:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
+    # headers = {
+    #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    # }
     # async with async_playwright() as p:
     #     browser = await p.chromium.launch(headless=True)
     #     page = await browser.new_page()
@@ -76,13 +77,14 @@ async def fetch_html(url: str) -> str:
     #     content = await page.content()
     #     await browser.close()
     #     return content
-    response = requests.get(url, headers=headers)
-    return response.text
+    # response = requests.get(url, headers=headers)
+    text = get_text(url)
+    return text
 
-async def parse_html(url: str) -> str:
-    html = await fetch_html(url)
-    soup = BeautifulSoup(html, "html.parser")
-    return soup.get_text(separator=" ", strip=True)
+# async def parse_html(url: str) -> str:
+#     html = await fetch_html(url)
+#     soup = BeautifulSoup(html, "html.parser")
+#     return soup.get_text(separator=" ", strip=True)
 
 def summarize_text(text):
     try:
@@ -150,7 +152,7 @@ def process_asins(request):
     async def process_asin(asin, url):
         asin_input = request.data.get('asins', '')
         geography = request.data.get('geography', 'United States')
-        email = request.data.get('email', '')
+        # email = request.data.get('email', '')
         if isinstance(asin_input, str):
             asin_list = [asin.strip() for asin in asin_input.split(',') if asin.strip()]
         else:
@@ -210,8 +212,8 @@ def process_asins(request):
 
         html = await fetch_html(url)
         if html:
-            parsed_text = await parse_html(url)
-            summary = summarize_text(parsed_text)
+            # parsed_text = await parse_html(url)
+            summary = summarize_text(html)
 
             if summary:
                 product_title = groq_output(summary, title_prompt)
@@ -224,7 +226,7 @@ def process_asins(request):
                 await sync_to_async(Product.objects.create)(
                     asin=asin,
                     geography=geography,
-                    email=email,
+                    # email=email,
                     title=product_title,
                     bullet_point_1=bullet_points[0] if bullet_points[0] else 'No bullet point available',
                     bullet_point_2=bullet_points[1] if bullet_points[1] else 'No bullet point available',
