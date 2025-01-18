@@ -210,7 +210,7 @@ export default function ListingGeneratorForm() {
   return (
     <main className="flex-1">
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex flex-col items-center justify-center">
-      <Card className="w-full max-w-5xl mt-2">
+      <Card className="w-full max-w-5xl mt-0">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-center text-yellow-400">
             Amazon AI Listing Generator
