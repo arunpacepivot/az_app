@@ -217,11 +217,24 @@ def process_asins(request):
 
             if summary:
                 product_title = groq_output(summary, title_prompt)
+                def clean_product_title(title: str) -> str:
+                    
+                    if ":" in title:
+                        return title.split(":", 1)[1].strip()
+                    return title.strip()
+
+                product_title = clean_product_title(product_title)
                 bullet_points_response = groq_output(summary, Bullet_prompt)
                 cleaned_bullet_points = clean_bullet_points(bullet_points_response)
                 bullet_points = [bp.strip() for bp in cleaned_bullet_points.split('\n') if bp.strip()]
                 bullet_points.extend([''] * (7 - len(bullet_points)))  # Ensure there are always 7 bullet points
                 product_description = groq_output(summary, Description_prompt)
+                def clean_product_description(description: str) -> str:
+                    if ":" in description:
+                        return description.split(":", 1)[1].strip()
+                    return description.strip()
+
+                product_description = clean_product_description(product_description)
 
                 await sync_to_async(Product.objects.create)(
                     asin=asin,
