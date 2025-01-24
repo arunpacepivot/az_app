@@ -207,7 +207,7 @@ export default function ListingGeneratorForm() {
                   id="targetACOS"
                   type="number"
                   value={targetACOS}
-                  onChange={(e) => setTargetACOS(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetACOS(e.target.value)}
                   className="w-full bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                   placeholder="Enter Target ACOS"
                 />
@@ -221,7 +221,7 @@ export default function ListingGeneratorForm() {
                   id="excelFile"
                   type="file"
                   accept=".xlsx, .xls"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)}
                   className="w-full bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                 />
               </div>
