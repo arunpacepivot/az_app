@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { json } from "stream/consumers"
+import { FileInput } from "@/components/ui/file-input"
 
 
 export default function ListingGeneratorForm() {
@@ -207,7 +208,7 @@ export default function ListingGeneratorForm() {
                   id="targetACOS"
                   type="number"
                   value={targetACOS}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetACOS(Number(e.target.value))}
+                  onChange={(value: number) => setTargetACOS(value)}
                   className="w-full bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                   placeholder="Enter Target ACOS"
                 />
@@ -217,9 +218,8 @@ export default function ListingGeneratorForm() {
                 <Label htmlFor="excelFile" className="text-yellow-400">
                   Upload Excel File
                 </Label>
-                <Input
+                <FileInput
                   id="excelFile"
-                  type="file"
                   accept=".xlsx, .xls"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)}
                   className="w-full bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
