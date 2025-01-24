@@ -122,7 +122,8 @@ def groq_output(text, task):
                 {"role": "system", "content": f"You are a helpful assistant adept at building copies for ecommerce pages optimized for keywords. You will get the {task} and you will take the persona described to complete the task."},
                 {"role": "user", "content": text}
             ],
-            model="llama3-70b-8192",
+            # model="llama3-70b-8192",
+            model="llama-3.3-70b-versatile"
         )
         return response.choices[0].message.content
     except Exception as e:
