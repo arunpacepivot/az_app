@@ -11,12 +11,10 @@ import { BoltIcon, ChartBarIcon, ShieldCheckIcon } from "@heroicons/react/24/out
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea, Input } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { json } from "stream/consumers"
 
-type Listing = Record<string, string>
 
 export default function ListingGeneratorForm() {
   const { user, loading } = useAuth()
