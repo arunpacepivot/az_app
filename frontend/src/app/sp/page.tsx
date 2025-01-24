@@ -51,9 +51,9 @@ export default function ListingGeneratorForm() {
     },
   ]
 
-  const handleFileChange = (event) => {
-    const uploadedFile = event.target.files[0]
-    setFile(uploadedFile)
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = event.target.files?.[0]
+    setFile(uploadedFile || null)
   }
 
   const handleFileParse = async () => {
@@ -63,7 +63,7 @@ export default function ListingGeneratorForm() {
     }
 
     const reader = new FileReader()
-    reader.onload = async (event) => {
+    reader.onload = async (event: ProgressEvent<FileReader>) => {
       if (!event.target || !event.target.result) {
         console.error("Error: event.target or event.target.result is null")
         return
@@ -72,7 +72,7 @@ export default function ListingGeneratorForm() {
       const workbook = XLSX.read(result, { type: "array" })
 
       // Parse each sheet into an object
-      const sheetsData = {}
+      const sheetsData: Record<string, unknown[]> = {}
       workbook.SheetNames.forEach((sheetName) => {
         const sheet = workbook.Sheets[sheetName]
         const jsonData = XLSX.utils.sheet_to_json(sheet)
