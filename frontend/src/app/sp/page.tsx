@@ -179,7 +179,7 @@ export default function ListingGeneratorForm() {
   return (
     <main className="flex-1">
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex flex-col items-center justify-center">
-        <Card className="w-full max-w-5xl mt-0">
+        <Card className="w-3/5 max-w-5xl mt-0">
           <CardHeader>
             <CardTitle className="text-3xl font-bold text-center text-yellow-400">
               Amazon Sponored Product Optimiser
@@ -216,7 +216,7 @@ export default function ListingGeneratorForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="excelFile" className="text-yellow-400">
-                  Upload Excel File
+                  Upload BULK File (Excel) for Last 30 Days
                 </Label>
                 <FileInput
                   id="excelFile"
