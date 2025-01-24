@@ -27,7 +27,7 @@ export default function ListingGeneratorForm() {
   const [progress, setProgress] = useState(0)
   const [file, setFile] = useState<File | null>(null)
   const [fileData, setFileData] = useState<string | null>(null)
-  const [targetACOS, setTargetACOS] = useState<string | null>(null)
+  const [targetACOS, setTargetACOS] = useState<number>(0)
   const [outputFile, setOutputFile] = useState<Blob | null>(null)
   
 
@@ -119,7 +119,7 @@ export default function ListingGeneratorForm() {
 
   const processExcelFile = async (file: File) => {
     const reader = new FileReader()
-    reader.onload = async (e) => {
+    reader.onload = async (e: ProgressEvent<FileReader>) => {
       if (e.target?.result) {
         try {
           const response = await axios.post(
@@ -162,7 +162,7 @@ export default function ListingGeneratorForm() {
     setIsProcessing(false)
     setProgress(0)
     setFile(null)
-    setTargetACOS(null)
+    setTargetACOS(0)
     setOutputFile(null)
     setFileData(null)
   }
@@ -207,7 +207,7 @@ export default function ListingGeneratorForm() {
                   id="targetACOS"
                   type="number"
                   value={targetACOS}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetACOS(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetACOS(Number(e.target.value))}
                   className="w-full bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                   placeholder="Enter Target ACOS"
                 />
