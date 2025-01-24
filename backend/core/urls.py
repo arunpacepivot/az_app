@@ -18,6 +18,7 @@ from django.urls import path, include
 from django.http import JsonResponse
 from django.contrib import admin
 from lister.views import get_csrf  # Import the CSRF view directly
+from sp.views import get_csrf  # Import the CSRF view directly
 
 # Root view
 def api_root(request):
@@ -27,7 +28,8 @@ def api_root(request):
         "endpoints": {
             "health_check": "/api/v1/health/",
             "lister": "api/v1/lister/",
-            "csrf": "/get_csrf/"
+            "csrf": "/get_csrf/",
+            "sp": "/api/v1/sp/"
         }
     })
 
@@ -35,6 +37,7 @@ def api_root(request):
 api_v1_patterns = [
     path('health/', include('health.urls')),
     path('lister/', include('lister.urls')),
+    path('sp/', include('sp.urls')),
 ]
 
 urlpatterns = [
