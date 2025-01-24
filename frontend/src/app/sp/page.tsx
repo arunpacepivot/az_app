@@ -182,7 +182,7 @@ export default function ListingGeneratorForm() {
         <Card className="w-3/5 max-w-5xl mt-0">
           <CardHeader>
             <CardTitle className="text-3xl font-bold text-center text-yellow-400">
-              Amazon Sponored Product Optimiser
+              Amazon Sponsored Product Optimiser
             </CardTitle>
             <CardDescription className="text-center text-black-500">
               Optimise your Amazon Sponsored Products to maximise traffic and conversions at a given ACOS.
@@ -209,7 +209,7 @@ export default function ListingGeneratorForm() {
                   type="number"
                   value={targetACOS}
                   onChange={(value: number) => setTargetACOS(value)}
-                  className="w-full bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
+                  className="w-1/6 bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                   placeholder="Enter Target ACOS"
                 />
               </div>
@@ -222,7 +222,7 @@ export default function ListingGeneratorForm() {
                   id="excelFile"
                   accept=".xlsx, .xls"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)}
-                  className="w-full bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
+                  className="w-1/6 bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                 />
               </div>
 
