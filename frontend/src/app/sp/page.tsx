@@ -179,7 +179,7 @@ export default function ListingGeneratorForm() {
   return (
     <main className="flex-1">
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex flex-col items-center justify-center">
-        <Card className="w-3/5 max-w-5xl mt-0">
+        <Card className="w-1/2 max-h-[180vh] overflow-y-auto mt-0">
           <CardHeader>
             <CardTitle className="text-3xl font-bold text-center text-yellow-400">
               Amazon Sponsored Product Optimiser
@@ -198,9 +198,9 @@ export default function ListingGeneratorForm() {
                   processExcelFile(file)
                 }
               }}
-              className="space-y-6"
+              className="space-y-12"
             >
-              <div className="space-y-2">
+              <div className="space-y-8 p-4">
                 <Label htmlFor="targetACOS" className="text-yellow-400">
                   Target ACOS
                 </Label>
@@ -214,7 +214,7 @@ export default function ListingGeneratorForm() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-8 p-4">
                 <Label htmlFor="excelFile" className="text-yellow-400">
                   Upload BULK File (Excel) for Last 30 Days
                 </Label>
@@ -222,20 +222,20 @@ export default function ListingGeneratorForm() {
                   id="excelFile"
                   accept=".xlsx, .xls"
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)}
-                  className="w-1/6 bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
+                  className="w-1/4 bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={isProcessing || !file || !targetACOS}
-                className="w-full bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center"
+                className="w-full mt-8 bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center"
               >
                 {isProcessing ? "Processing..." : "Evaluate Ads"}
               </Button>
             </form>
             {isProcessing && (
-              <div className="mt-6 space-y-2">
+              <div className="mt-8 space-y-8">
                 <Label className="text-yellow-400">Processing Excel File...</Label>
                 <Progress value={progress} className="w-full" />
               </div>
@@ -252,13 +252,13 @@ export default function ListingGeneratorForm() {
                   document.body.removeChild(a)
                   URL.revokeObjectURL(url)
                 }}
-                className="mt-6 w-full bg-green-500 text-white hover:bg-green-600 focus:ring-green-400"
+                className="mt-8 w-full bg-green-500 text-white hover:bg-green-600 focus:ring-green-400"
               >
                 Download Output
               </Button>
             )}
             {error && (
-              <div className="mt-6 text-red-500">
+              <div className="mt-8 text-red-500">
                 <p>{error}</p>
               </div>
             )}
