@@ -4,33 +4,28 @@ import { useState } from "react"
 import { useAuth } from "@/lib/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import * as XLSX from "xlsx"
-import axios, { AxiosError } from "axios"
+import axios from "axios"
 import { BoltIcon, ChartBarIcon, ShieldCheckIcon } from "@heroicons/react/24/outline"
+import * as XLSX from 'xlsx'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
-import { json } from "stream/consumers"
 import { FileInput } from "@/components/ui/file-input"
-
 
 export default function ListingGeneratorForm() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [connectivityResult, setConnectivityResult] = useState<string | null>(null)
-  const [connectivityError, setConnectivityError] = useState<string | null>(null)
   const [csrfToken, setCsrfToken] = useState<string | null>(null)
   const [error, setError] = useState("")
+  const [apiError, setApiError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [file, setFile] = useState<File | null>(null)
-  const [fileData, setFileData] = useState<string | null>(null)
   const [targetACOS, setTargetACOS] = useState<number>(0)
   const [outputFile, setOutputFile] = useState<Blob | null>(null)
-  
 
   const baseUrl = "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net/"
 
@@ -52,120 +47,92 @@ export default function ListingGeneratorForm() {
     },
   ]
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFile = event.target.files?.[0]
-    setFile(uploadedFile || null)
-  }
-
-  const handleFileParse = async () => {
-    if (!file) {
-      alert("Please select a file first!")
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = async (event: ProgressEvent<FileReader>) => {
-      if (!event.target || !event.target.result) {
-        console.error("Error: event.target or event.target.result is null")
-        return
-      }
-      const result = event.target.result
-      const workbook = XLSX.read(result, { type: "array" })
-
-      // Parse each sheet into an object
-      const sheetsData: Record<string, unknown[]> = {}
-      workbook.SheetNames.forEach((sheetName) => {
-        const sheet = workbook.Sheets[sheetName]
-        const jsonData = XLSX.utils.sheet_to_json(sheet)
-        sheetsData[sheetName] = jsonData
-      })
-
-      setFileData(JSON.stringify(sheetsData))
-
-      // Send the data to the backend
-      try {
-        const response = await axios.post("/api/sp", {
-          fileData: fileData,
-          targetACOS: targetACOS
-        })
-        console.log("Response from server:", response.data)
-      } catch (error) {
-        console.error("Error uploading data:", error)
-      }
-    }
-
-    reader.readAsArrayBuffer(file)
-  }
-
   useEffect(() => {
     async function fetchCsrfToken() {
-      console.log("Fetching CSRF token from" + baseUrl + "get_csrf/")
       try {
         const response = await axios.get(`${baseUrl}get_csrf/`, {
           withCredentials: true,
         })
-        console.log("CSRF Response:", response)
         const data = response.data
         if (!data.csrfToken) {
-          console.error("No CSRF token found in the response.")
+          setError("No security token found. Please try again.")
           return
         }
         setCsrfToken(data.csrfToken)
       } catch (error) {
-        console.error("Error fetching CSRF :", error)
+        setError("Failed to get security token. Please refresh the page.")
       }
     }
     fetchCsrfToken()
   }, [])
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = event.target.files?.[0]
+    setFile(uploadedFile || null)
+    setError("")
+    setApiError(null)
+  }
+
   const processExcelFile = async (file: File) => {
-    const reader = new FileReader()
-    reader.onload = async (e: ProgressEvent<FileReader>) => {
-      if (e.target?.result) {
-        try {
-          const response = await axios.post(
-            `${baseUrl}api/v1/sp/process_excel/`,
-            {
-              fileData: fileData,
-              targetACOS: targetACOS,
-            },
-            {
-              headers: {
-                "X-CSRFToken": csrfToken,
-              },
-              responseType: "blob",
-              withCredentials: true,
-            },
-          )
-          if (response.status === 200) {
-            const blob = new Blob([response.data], {
-              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            })
-            setOutputFile(blob)
-            setProgress(100)
-            setError("")
-          } else {
-            setError("Failed to process the excel file.")
-          }
-        } catch (error) {
-          console.error("Error processing excel file:", error)
-          setError("An error occurred while processing the file.")
-        } finally {
-          setIsProcessing(false)
-        }
-      }
+    if (!csrfToken) {
+      setError("Waiting for security token...")
+      return
     }
-    reader.readAsArrayBuffer(file)
+
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("target_acos", targetACOS.toString())
+
+    try {
+      setError("")
+      setApiError(null)
+      setProgress(20)
+
+      const response = await axios.post(
+        `${baseUrl}process_spads/`,
+        formData,
+        {
+          headers: {
+            "X-CSRFToken": csrfToken,
+            "Content-Type": "multipart/form-data",
+          },
+          withCredentials: true,
+        }
+      )
+      
+      setProgress(60)
+
+      if (response.status === 200) {
+        // Convert the JSON response to Excel
+        const ws = XLSX.utils.json_to_sheet(response.data)
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, "Results")
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+        const blob = new Blob([excelBuffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+        setOutputFile(blob)
+        setProgress(100)
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setApiError(error.response?.data?.error || "Server error occurred")
+      } else {
+        setError("Failed to process file")
+      }
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleReset = () => {
     setError("")
+    setApiError(null)
     setIsProcessing(false)
     setProgress(0)
     setFile(null)
     setTargetACOS(0)
     setOutputFile(null)
-    setFileData(null)
   }
 
   if (loading) {
@@ -193,10 +160,16 @@ export default function ListingGeneratorForm() {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                if (file && targetACOS) {
-                  setIsProcessing(true)
-                  processExcelFile(file)
+                if (!file || !targetACOS) {
+                  setError("Please provide both file and target ACOS")
+                  return
                 }
+                if (!csrfToken) {
+                  setError("Please wait for security token...")
+                  return
+                }
+                setIsProcessing(true)
+                processExcelFile(file)
               }}
               className="space-y-12"
             >
@@ -208,9 +181,12 @@ export default function ListingGeneratorForm() {
                   id="targetACOS"
                   type="number"
                   value={targetACOS}
-                  onChange={(value: number) => setTargetACOS(value)}
+                  onChange={(e) => setTargetACOS(parseFloat(e.target.value))}
                   className="w-1/6 bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                   placeholder="Enter Target ACOS"
+                  step="0.01"
+                  min="0"
+                  max="1"
                 />
               </div>
 
@@ -220,8 +196,8 @@ export default function ListingGeneratorForm() {
                 </Label>
                 <FileInput
                   id="excelFile"
-                  accept=".xlsx, .xls"
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFile(e.target.files?.[0] || null)}
+                  accept=".xlsx"
+                  onChange={handleFileChange}
                   className="w-1/4 bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                 />
               </div>
@@ -234,19 +210,21 @@ export default function ListingGeneratorForm() {
                 {isProcessing ? "Processing..." : "Evaluate Ads"}
               </Button>
             </form>
+
             {isProcessing && (
               <div className="mt-8 space-y-8">
                 <Label className="text-yellow-400">Processing Excel File...</Label>
                 <Progress value={progress} className="w-full" />
               </div>
             )}
+
             {outputFile && (
               <Button
                 onClick={() => {
                   const url = URL.createObjectURL(outputFile)
                   const a = document.createElement("a")
                   a.href = url
-                  a.download = "output.xlsx"
+                  a.download = "optimized_campaigns.xlsx"
                   document.body.appendChild(a)
                   a.click()
                   document.body.removeChild(a)
@@ -254,12 +232,19 @@ export default function ListingGeneratorForm() {
                 }}
                 className="mt-8 w-full bg-green-500 text-white hover:bg-green-600 focus:ring-green-400"
               >
-                Download Output
+                Download Optimized Campaigns
               </Button>
             )}
+
             {error && (
               <div className="mt-8 text-red-500">
-                <p>{error}</p>
+                <p>Error: {error}</p>
+              </div>
+            )}
+
+            {apiError && (
+              <div className="mt-8 text-red-500">
+                <p>Server Error: {apiError}</p>
               </div>
             )}
           </CardContent>
@@ -287,7 +272,8 @@ export default function ListingGeneratorForm() {
               </a>
             </div>
           </div>
-          {/* Feature Section */}
+
+          {/* Features Grid */}
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
             <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
               {features.map((feature) => (

@@ -1,8 +1,7 @@
 from django.shortcuts import render
 from rest_framework import viewsets
-from .models import Product
-from .serializers import ProductSerializer
-import os
+from .models import ProcessedFile
+from .serializers import ProcessedFileSerializer
 import re
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -12,16 +11,16 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 import json
 import pandas as pd
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
-import numpy as np
+import os
+import fuzzywuzzy
+from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
+from .api import get_text
 
 
-
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
+class ProcessedFileViewSet(viewsets.ModelViewSet):
+    queryset = ProcessedFile.objects.all()
+    serializer_class = ProcessedFileSerializer
 
 @ensure_csrf_cookie
 @require_http_methods(['GET', 'OPTIONS'])
@@ -36,6 +35,7 @@ def get_csrf(request):
     response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken"
     return response
+
 def harvest_data_sk(str_df: pd.DataFrame, bulk_df: pd.DataFrame, target_acos: float ) -> pd.DataFrame:
     df_str = str_df.copy()
     # Add "ASIN" column by extracting the first word from "Campaign Name"
@@ -533,7 +533,7 @@ def placement_optimize_sk( bulk_df: pd.DataFrame, target_acos: float ) -> pd.Dat
             # Calculate bids for other placements based on ASIN CPC ratio
             reference_placement = RPC_df.at[idx, "Placement"]
             reference_cpc = asin_summary[(asin_summary["ASIN_Derived"] == row["ASIN_Derived"]) & (asin_summary["Placement"] == reference_placement)]["CPC"].values
-            reference_cpc = reference_cpc[0] if len(reference_cpc) > 0 and not pd.isna(reference_cpc[0]) else placement_aggregate_cpc.get(reference_placement, 5)
+            reference_cpc = reference_cpc[0] if len(reference_cpc) > 0 and not pd.isna(reference_cpc[0]) else placement_aggregate_cpc.get(reference_placement, 0)
             reference_ideal_bid = RPC_df.at[idx, "Ideal Bid"]
 
             for other_idx in group_indices:
@@ -1154,83 +1154,121 @@ def standardize_headers(df, expected_headers):
     return df.rename(columns=header_mapping)
 
 
-
 @csrf_exempt
 @api_view(['POST', 'OPTIONS']) #added api_view
 @require_http_methods(['POST', 'OPTIONS'])
 def process_spads(request):
+    
     if request.method == "OPTIONS":
-        response = JsonResponse({})
-        response["Access-Control-Allow-Origin"] = request.headers.get('Origin')
-        response["Access-Control-Allow-Credentials"] = "true"
-        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken"
-        return response
+        return create_response(request, {})
         
-    if request.method == "POST":
+    try:
+        file = request.FILES.get('file')
+        if not file:
+            return create_response(request, {"error": "No file uploaded"}, 400)
+        if not file.name.endswith(".xlsx"):
+            return create_response(request, {"error": "Invalid file type"}, 400)
+        
+        target_acos = float(request.POST.get('target_acos', 0))
+        if target_acos <= 0:
+            return create_response(request, {"error": "Invalid target ACOS"}, 400)
+        
+        expected_headers_str = ["Start Date", "End Date", "Portfolio name", "Currency", "Campaign Name", "Ad Group Name", "Targeting", "Match Type", "Customer Search Term", "Impressions", "Clicks", "Click-Thru Rate (CTR)", "Cost Per Click (CPC)", "Spend", "14 Day Total Sales ", "Total Advertising Cost of Sales (ACOS) ", "Total Return on Advertising Spend (ROAS)", "14 Day Total Orders (#)", "14 Day Total Units (#)", "14 Day Conversion Rate", "14 Day Advertised ASIN Units (#)", "14 Day Brand Halo ASIN Units (#)", "14 Day Advertised ASIN Sales (₹)", "14 Day Brand Halo ASIN Sales (₹)"
+    ]
+        expected_headers_bulk = ["Product", "Entity", "Operation", "Campaign ID", "Ad Group ID", "Portfolio ID", "Ad ID", "Keyword ID", "Product Targeting ID", "Campaign Name", "Ad Group Name", "Campaign Name (Informational only)", "Ad Group Name (Informational only)", "Portfolio Name (Informational only)", "Start Date", "End Date", "Targeting Type", "State", "Campaign State (Informational only)", "Ad Group State (Informational only)", "Daily Budget", "SKU", "ASIN", "Eligibility Status (Informational only)", "Reason for Ineligibility (Informational only)", "Ad Group Default Bid", "Ad Group Default Bid (Informational only)", "Bid", "Keyword Text", "Native Language Keyword", "Native Language Locale", "Match Type", "Bidding Strategy", "Placement", "Percentage", "Product Targeting Expression", "Resolved Product Targeting Expression (Informational only)", "Impressions", "Clicks", "Click-through Rate", "Spend", "Sales", "Orders", "Units", "Conversion Rate", "ACOS", "CPC", "ROAS"
+    ]
+
+        
+
+        # Extract the relevant sheet data into a DataFrame
         try:
-            file_data = request.FILES.get('file')  # Change on line <line number>
-            targetACOS = request.POST.get('targetACOS')
-            if not file_data:
-                return JsonResponse({"error": "File is missing"}, status=400)  # Change on line <line number>
-            if not targetACOS:
-                return JsonResponse({"error": "Target ACOS is missing"}, status=400)  # Change on line <line number>
-
-            expected_headers_str = ["Product", "Campaign ID", "Ad Group ID", "Keyword ID", "Product Targeting ID", "Campaign Name (Informational only)", "Ad Group Name (Informational only)", "Portfolio Name (Informational only)", "State", "Campaign State (Informational only)", "Bid", "Keyword Text", "Match Type", "Product Targeting Expression", "Resolved Product Targeting Expression (Informational only)", "Customer Search Term", "Impressions", "Clicks", "Click-through Rate", "Spend", "Sales", "Orders", "Units", "Conversion Rate", "ACOS", "CPC", "ROAS"
-
-        ]
-            expected_headers_bulk = ["Product", "Entity", "Operation", "Campaign ID", "Ad Group ID", "Portfolio ID", "Ad ID", "Keyword ID", "Product Targeting ID", "Campaign Name", "Ad Group Name", "Campaign Name (Informational only)", "Ad Group Name (Informational only)", "Portfolio Name (Informational only)", "Start Date", "End Date", "Targeting Type", "State", "Campaign State (Informational only)", "Ad Group State (Informational only)", "Daily Budget", "SKU", "ASIN", "Eligibility Status (Informational only)", "Reason for Ineligibility (Informational only)", "Ad Group Default Bid", "Ad Group Default Bid (Informational only)", "Bid", "Keyword Text", "Native Language Keyword", "Native Language Locale", "Match Type", "Bidding Strategy", "Placement", "Percentage", "Product Targeting Expression", "Resolved Product Targeting Expression (Informational only)", "Impressions", "Clicks", "Click-through Rate", "Spend", "Sales", "Orders", "Units", "Conversion Rate", "ACOS", "CPC", "ROAS"
-        ]
-
-            # Read the file data from the request body
-            file_data = json.loads(request.body.decode("utf-8"))
-            str_report_df = pd.read_json(file_data["str_report_df"])  # Assuming the frontend sends the data as JSON
-            bulk_report_df = pd.read_json(file_data["bulk_report_df"])  # Change on line <line number>
-
-            # Standardize headers
-            str_report_df = standardize_headers(str_report_df, expected_headers_str)
-            bulk_report_df = standardize_headers(bulk_report_df, expected_headers_bulk)
-
-            # Process SK and MK reports
-            str_sk = str_report_df[str_report_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
-            str_mk = str_report_df[~str_report_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
-
-            bulk_sk = bulk_report_df[bulk_report_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
-            bulk_mk = bulk_report_df[~bulk_report_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
-
-            # Harvest data
-            deduped_df, result_df = harvest_data_sk(str_sk, bulk_sk, targetACOS)
-
-            # Campaign negation
-            pt_df, kw_df = campaign_negation_sk(str_sk, bulk_sk, targetACOS, multiplier=1.5)
-            pt_df_mk, kw_df_mk = campaign_negation_mk(str_mk, bulk_mk, targetACOS, multiplier=1.5)
-
-            # Placement optimization
-            filtered_bulk_df, valid_campaigns, RPC_df, asin_summary = placement_optimize_sk(bulk_sk, targetACOS)
-            filtered_bulk_df_mk, valid_campaigns_mk, RPC_df_mk, bulk_summary_mk = placement_optimize_mk(bulk_mk, targetACOS)
-
-            new_bid_df_mk = filtered_bulk_df_mk.drop(columns=["key", "RPC"], errors="ignore")
-
-            # Combine results
-            combined_df = pd.concat([filtered_bulk_df, new_bid_df_mk], ignore_index=True)
-            pt_combined_df = pd.concat([pt_df, pt_df_mk], ignore_index=True)
-            kw_combined_df = pd.concat([kw_df, kw_df_mk], ignore_index=True)
-            placement_combined_df = pd.concat([valid_campaigns, valid_campaigns_mk], ignore_index=True)
-            RPC_combined_df = pd.concat([RPC_df, RPC_df_mk], ignore_index=True)
-            bulk_summary_combined_df = pd.concat([asin_summary, bulk_summary_mk], ignore_index=True)
-
-            # Prepare response
-            response_data = {
-                "deduped_df": deduped_df.to_dict(orient='records'),
-                "result_df": result_df.to_dict(orient='records'),
-                "pt_combined_df": pt_combined_df.to_dict(orient='records'),
-                "kw_combined_df": kw_combined_df.to_dict(orient='records'),
-                "placement_combined_df": placement_combined_df.to_dict(orient='records'),
-                "RPC_combined_df": RPC_combined_df.to_dict(orient='records'),
-                "bulk_summary_combined_df": bulk_summary_combined_df.to_dict(orient='records'),
-            }
-            return JsonResponse(response_data, status=200, safe=False)  # Change on line <line number>
+            str_df = pd.read_excel(file, sheet_name="SP Search Term Report")
+        except ValueError:
+            return create_response(request, {"error": "SP Search Term Report not found in the uploaded file"}, 400)
         
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        try:
+            bulk_df = pd.read_excel(file, sheet_name="Sponsored Products Campaigns")
+        except ValueError:
+            return create_response(request, {"error": "Sponsored Products Campaigns not found in the uploaded file"}, 400)
         
+
+        str_df=standardize_headers(str_df,expected_headers_str)
+        bulk_df=standardize_headers(bulk_df,expected_headers_bulk)
+        
+
+        str_sk = str_df[str_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
+        str_mk = str_df[~str_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
+
+        bulk_sk = bulk_df[bulk_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
+        bulk_mk = bulk_df[~bulk_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
+
+        #Harvest data
+        deduped_df, result_df = harvest_data_sk(
+            str_df=str_sk,
+            bulk_df=bulk_sk,
+            target_acos=target_acos
+        )
+
+        #Campaign negation
+        pt_df, kw_df = campaign_negation_sk(
+            str_df=str_sk,
+            bulk_df=bulk_sk,
+            target_acos=target_acos,
+            multiplier=1.5#Scale up mode set to 2.5 optimise set to 1.2
+        )
+
+        pt_df_mk, kw_df_mk = campaign_negation_mk(
+            str_df=str_mk,
+            bulk_df=bulk_mk,
+            target_acos=target_acos,
+            multiplier=1.5#Scale up mode set to 2.5 optimise set to 1.2
+        )
+        #Placement optimization
+        filtered_bulk_df, valid_campaigns, RPC_df, asin_summary = placement_optimize_sk(
+            bulk_df=bulk_sk,
+            target_acos=target_acos
+        )
+
+        filtered_bulk_df_mk, valid_campaigns_mk, RPC_df_mk, bulk_summary_mk = placement_optimize_mk(
+            bulk_df=bulk_mk,
+            target_acos=target_acos
+        )
+        new_bid_df_mk = filtered_bulk_df_mk.drop(columns=["key", "RPC"], errors="ignore")
+
+        # Combine filtered_bulk_df and new_bid_df_mk by appending new_bid_df_mk to filtered_bulk_df
+        combined_df = pd.concat([filtered_bulk_df, new_bid_df_mk], ignore_index=True)
+        pt_combined_df = pd.concat([pt_df, pt_df_mk], ignore_index=True)
+        kw_combined_df = pd.concat([kw_df, kw_df_mk], ignore_index=True)
+        placement_combined_df = pd.concat([valid_campaigns, valid_campaigns_mk], ignore_index=True)
+        RPC_combined_df = pd.concat([RPC_df, RPC_df_mk], ignore_index=True)
+        bulk_summary_combined_df = pd.concat([asin_summary, bulk_summary_mk], ignore_index=True)  
+
+        # Combine all the DataFrames into a single DataFrame
+        final_combined_df = pd.concat([
+            deduped_df,
+            result_df,
+            combined_df,
+            pt_combined_df,
+            kw_combined_df,
+            placement_combined_df,
+            RPC_combined_df,
+            bulk_summary_combined_df
+        ], axis=1)
+
+        # Convert the final combined DataFrame to JSON
+        final_combined_json = final_combined_df.to_json(orient="records")
+
+        response = create_response(request, json.loads(final_combined_json))
+        return response
+   
+    except Exception as e:
+        return create_response(request, {"error combining data": str(e)}, 500)
+            
+
+def create_response(request, data, status=200):
+    response = JsonResponse(data, safe=False, status=status)
+    response["Access-Control-Allow-Origin"] = request.headers.get('Origin')
+    response["Access-Control-Allow-Credentials"] = "true"
+    response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken"
+    return response
