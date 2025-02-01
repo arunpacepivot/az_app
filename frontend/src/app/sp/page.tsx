@@ -94,7 +94,7 @@ export default function ListingGeneratorForm() {
         {
           headers: {
             "X-CSRFToken": csrfToken,
-            "Content-Type": "multipart/form-data",
+            // "Content-Type": "multipart/form-data",
           },
           withCredentials: true,
         }
@@ -160,7 +160,7 @@ export default function ListingGeneratorForm() {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                if (!file || !targetACOS) {
+                if (!file || targetACOS <= 0) {
                   setError("Please provide both file and target ACOS")
                   return
                 }
@@ -181,7 +181,7 @@ export default function ListingGeneratorForm() {
                   id="targetACOS"
                   type="number"
                   value={targetACOS}
-                  onChange={(e) => setTargetACOS(parseFloat(e.target.value))}
+                  onChange={(value: number) => setTargetACOS(value)}
                   className="w-1/6 bg-gray-800 text-white border-gray-700 focus:ring-yellow-400"
                   placeholder="Enter Target ACOS"
                   step="0.01"
