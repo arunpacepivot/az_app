@@ -17,7 +17,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
      * @param event - React change event
      */
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = parseInt(event.target.value, 10);
+      const newValue = parseFloat(event.target.value);
       if (!isNaN(newValue)) {
         onChange(newValue);
       }
