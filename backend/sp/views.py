@@ -15,7 +15,7 @@ import os
 import fuzzywuzzy
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
-from .api import get_text
+
 
 
 class ProcessedFileViewSet(viewsets.ModelViewSet):
