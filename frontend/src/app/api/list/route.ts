@@ -3,12 +3,14 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     // Use environment variable for backend URL
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
+      (isDevelopment ? "http://localhost:8000/" : "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net/");
     
     // Forward the request to the Django backend
     const data = await request.json();
     
-    const backendResponse = await fetch(`${BACKEND_URL}/api/v1/lister/`, {
+    const backendResponse = await fetch(`${baseUrl}/api/v1/lister/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

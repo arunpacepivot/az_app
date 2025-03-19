@@ -60,8 +60,10 @@ export default function ListingGeneratorForm() {
         "Australia",
     ];
 
-    // Use environment variables for the backend URL
-    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000/";
+    // More robust URL determination
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
+      (isDevelopment ? "http://localhost:8000/" : "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net/");
    
     const features = [
       {
