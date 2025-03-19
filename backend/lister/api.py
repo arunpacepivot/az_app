@@ -17,22 +17,31 @@ def get_product_details(product_url):
 def get_text(product_url):
     product_details = get_product_details(product_url)
     # Convert the product details JSON into a readable text format
-    def json_to_text(data: dict) -> str:
-        
+    def json_to_text(data) -> str:
         text_lines = []
-        for key, value in data.items():
-            if isinstance(value, dict):
-                text_lines.append(f"{key}:")
-                text_lines.append(json_to_text(value))
-            elif isinstance(value, list):
-                text_lines.append(f"{key}:")
-                for item in value:
-                    if isinstance(item, dict):
-                        text_lines.append(json_to_text(item))
-                    else:
-                        text_lines.append(f"  - {item}")
-            else:
-                text_lines.append(f"{key}: {value}")
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    text_lines.append(f"{key}:")
+                    text_lines.append(json_to_text(value))
+                elif isinstance(value, list):
+                    text_lines.append(f"{key}:")
+                    for item in value:
+                        if isinstance(item, dict):
+                            text_lines.append(json_to_text(item))
+                        else:
+                            text_lines.append(f"  - {item}")
+                else:
+                    text_lines.append(f"{key}: {value}")
+        elif isinstance(data, list):
+            for i, item in enumerate(data):
+                text_lines.append(f"Item {i}:")
+                if isinstance(item, (dict, list)):
+                    text_lines.append(json_to_text(item))
+                else:
+                    text_lines.append(f"  - {item}")
+        else:
+            text_lines.append(str(data))
         return "\n".join(text_lines)
 
     # Convert the product details JSON to text
