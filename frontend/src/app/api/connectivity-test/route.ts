@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    // Use environment variable for backend URL
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
     
     // Forward the request to the Django backend
     const data = await request.json();

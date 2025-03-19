@@ -36,7 +36,7 @@ export default function Navbar() {
           <div className="flex items-center">
             {!isAuthPage && (
               user ? (
-                <div className="flex items-center space-x-12">
+                <div className="flex items-center space-x-6">
                   <Link 
                     href="https://pacepivot.com/"
                     className="text-yellow-400 hover:text-yellow-300"
@@ -45,10 +45,17 @@ export default function Navbar() {
                   </Link>
 
                   <Link 
-                    href="https://pacepivot.com/about-us/"
-                    className="text-yellow-400 hover:text-yellow-300"
+                    href="/lister"
+                    className={`text-yellow-400 hover:text-yellow-300 ${pathname === '/lister' ? 'border-b-2 border-yellow-400' : ''}`}
                   >
-                    About Us
+                    Listing Generator
+                  </Link>
+
+                  <Link 
+                    href="/sp"
+                    className={`text-yellow-400 hover:text-yellow-300 ${pathname === '/sp' ? 'border-b-2 border-yellow-400' : ''}`}
+                  >
+                    SP Optimizer
                   </Link>
 
                   <Link 
@@ -60,9 +67,8 @@ export default function Navbar() {
 
                   <Link 
                     href="/dashboard"
-                    className="text-yellow-400 hover:text-yellow-300"
+                    className={`text-yellow-400 hover:text-yellow-300 ${pathname === '/dashboard' ? 'border-b-2 border-yellow-400' : ''}`}
                   >
-                  
                     Dashboard
                   </Link>
                   
