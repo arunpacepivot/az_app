@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/lib/context/AuthContext'
-import axios from "axios";
+import { useProcessListings } from '@/lib/hooks/queries/use-listings';
 import { BoltIcon, ChartBarIcon, ShieldCheckIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
+import ProtectedRoute from '@/components/auth/protected-route'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 
-type Listing = Record<string, string>;
 
 const formatText = (text: string) => {
   if (!text) return '-';
@@ -37,18 +37,31 @@ const formatText = (text: string) => {
   );
 };
 
-export default function ListingGeneratorForm() {
-    const { loading } = useAuth()
+export default function ListerPage() {
+  return (
+    <ProtectedRoute>
+      <ListingGeneratorForm />
+    </ProtectedRoute>
+  )
+}
+
+function ListingGeneratorForm() {
+    const { loading: authLoading } = useAuth()
     const [selectedCountry, setSelectedCountry] = useState("");
     const [asins, setAsins] = useState("");
-    const [csrfToken, setCsrfToken] = useState<string | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [error, setError] = useState("");
-    const [listings, setListings] = useState<Listing[] | null>(null);
-    const [isProcessing, setIsProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
+    // Use React Query mutation
+    const { 
+      mutate: processListings,
+      isPending: isProcessing,
+      data: listings,
+      error: mutationError
+    } = useProcessListings();
 
     const countries = [
-        "India",
+        "India", 
         "United States",
         "United Kingdom",
         "Canada",
@@ -60,10 +73,6 @@ export default function ListingGeneratorForm() {
         "Australia",
     ];
 
-    // More robust URL determination
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
-      (isDevelopment ? "http://localhost:8000/" : "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net/");
    
     const features = [
       {
@@ -83,140 +92,70 @@ export default function ListingGeneratorForm() {
       },
     ]   
 
-    useEffect(() => {
-      async function fetchCsrfToken() {
-        console.log("Fetching CSRF token from "+baseUrl+"get_csrf/");
-        try {
-          const response = await axios.get(`${baseUrl}get_csrf/`, {
-            withCredentials: true,
-            timeout: 10000, // 10 second timeout
-          });
-          console.log("CSRF Response:", response);
-          const data = response.data;
-          if (!data.csrfToken) {
-            console.error("No CSRF token found in the response.");
-            setError("No security token found in response. Please try again.");
-            return;
-          }
-          setCsrfToken(data.csrfToken);
-        } catch (error) {
-          console.error("Error fetching CSRF:", error);
-          // Don't show error to user during initial load
-          if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
-            setError("Connection timeout. Please check your internet connection.");
-          } else if (axios.isAxiosError(error) && !error.response) {
-            setError("Network error. Please check if backend server is running.");
-          }
-        }
-      }
-      fetchCsrfToken();
-    }, [baseUrl]);
-
     const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setAsins(event.target.value);
     };
     
     const handleGenerateListings = async () => {
         const sanitizedAsins = asins
-        .split(',')
-        .map(asin => asin.trim())
-        .filter(asin => asin);
+          .split(',')
+          .map(asin => asin.trim())
+          .filter(asin => asin);
 
         if (!sanitizedAsins.length) {
             setError("Please enter one or more ASINs.");
             return;
         }
-        
-        if (!csrfToken) {
-            setError("No security token available. Please refresh the page.");
-            return;
-        }
-      
+
         setError("");
-        setIsProcessing(true);
         setProgress(0);
-      
+
         const progressInterval = setInterval(() => {
           setProgress((prevProgress) => (prevProgress < 90 ? prevProgress + 10 : prevProgress));
         }, 500);
-      
-        const payload = { asins, geography: selectedCountry };
-    
+
         try {
-          console.log(`Sending request to: ${baseUrl}api/v1/lister/process_asins/`);
-          const response = await axios.post(
-            `${baseUrl}api/v1/lister/process_asins/`,
-            payload,
+          await processListings(
+            { asins, geography: selectedCountry },
             {
-              headers: {
-                "X-CSRFToken": csrfToken,
-                "Content-Type": "application/json",
+              onSuccess: (data) => {
+                console.log('Received listings data:', data);
+                clearInterval(progressInterval);
+                setProgress(100);
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                  console.error('Invalid or empty listings data:', data);
+                  setError("No listings found in the response.");
+                }
               },
-              withCredentials: true,
-              timeout: 30000, // 30 second timeout
+              onError: (error) => {
+                console.error('Mutation error:', error);
+                clearInterval(progressInterval);
+                setError(error.message || "Failed to generate listings");
+              },
             }
           );
-    
-          clearInterval(progressInterval);
-          setProgress(100);
-
-          console.log("Listings Data:", response.data);
-    
-          if (response.status === 200 && response.data) {
-            console.log("Response Data:", response.data);
-            if (Array.isArray(response.data) && response.data.length > 0) {
-              setListings(response.data); 
-            } else {
-              setError("No listings found in the response.");
-            }
-          } else {
-            setError("Failed to get listings. Please try again.");
-          }
         } catch (error) {
+          console.error('Unexpected error:', error);
           clearInterval(progressInterval);
-          if (axios.isAxiosError(error)) {
-            console.error("Axios Error generating listings:", error);
-            
-            // Check for specific backend errors
-            if (error.response?.data && typeof error.response.data === 'string' && 
-                error.response.data.includes("'list' object has no attribute 'items'")) {
-              setError("Backend error: The product data format is invalid. This often happens with certain ASINs. Please try a different ASIN.");
-            } else if (error.code === 'ECONNABORTED') {
-              setError("Request timed out. The server might be busy or unavailable.");
-            } else if (error.response) {
-              const errorMessage = typeof error.response.data === 'string' 
-                ? error.response.data 
-                : JSON.stringify(error.response.data);
-              setError(`Server Error (${error.response.status}): ${errorMessage}`);
-            } else if (error.request) {
-              setError("Network Error: No response received from the server. Please check your internet connection and if the backend is running.");
-            } else {
-              setError(`Error: ${error.message}`);
-            }
-          } else {
-            console.error("Unexpected error:", error);
-            setError(`Unexpected Error: ${error instanceof Error ? error.message : String(error)}`);
-          }
-        } finally {
-          clearInterval(progressInterval);
-          setTimeout(() => {
-            setIsProcessing(false);
-          }, 500);
+          setError("An unexpected error occurred");
         }
     };
 
     const handleReset = () => {
       setAsins('');
-      setListings(null);
       setError('');
-      setIsProcessing(false);
       setProgress(0);
     };
 
     const renderTable = () => {
-      if (!listings || !Array.isArray(listings) || listings.length === 0) return null;        
+      console.log('Rendering table with listings:', listings);
+      if (!listings || !Array.isArray(listings) || listings.length === 0) {
+        console.log('No listings to display');
+        return null;
+      }        
   
       const headers = Object.keys(listings[0]);
+      console.log('Table headers:', headers);
       
       return (
         <div className="overflow-x-auto mt-4">
@@ -263,7 +202,7 @@ export default function ListingGeneratorForm() {
     };
     
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800">
         <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-yellow-400"></div>
@@ -352,7 +291,7 @@ export default function ListingGeneratorForm() {
             <div className="flex space-x-4 pt-4">
               <Button
                 type="submit"
-                disabled={isProcessing || !selectedCountry}
+                disabled={authLoading || !selectedCountry}
                 className="w-3/4 bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center transition-all duration-200 transform hover:translate-y-[-2px] shadow-lg"
               >
                 {isProcessing ? (
@@ -365,7 +304,7 @@ export default function ListingGeneratorForm() {
               <Button
                 type="button"
                 onClick={handleReset}
-                disabled={isProcessing}
+                disabled={authLoading}
                 className="w-1/4 bg-gray-700 text-white hover:bg-gray-600 transition-all duration-200 border border-gray-600"
               >
                 Reset
@@ -404,13 +343,13 @@ export default function ListingGeneratorForm() {
             </div>
           )}
           
-          {error && (
+          {mutationError && (
             <div className="mt-8 p-4 bg-red-900/20 rounded-lg border border-red-700/50">
               <p className="text-red-400 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                Error: {error}
+                Error: {mutationError.message}
               </p>
             </div>
           )}

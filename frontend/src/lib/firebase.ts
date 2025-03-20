@@ -37,21 +37,12 @@ let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 
 if (typeof window !== "undefined") {
-  try {
-    if (!getApps().length) {
-      // console.log('About to initialize Firebase with config:', firebaseConfig);
-      app = initializeApp(firebaseConfig);
-      // console.log('Firebase app initialized successfully');
-    } else {
-      // console.log('Using existing Firebase app');
-      app = getApps()[0];
-    }
-    auth = getAuth(app);
-    // console.log('Firebase Auth initialized successfully');
-  } catch (error) {
-    console.error('Firebase initialization error:', error);
-    // console.error('Failed Firebase Config:', JSON.stringify(firebaseConfig, null, 2));
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
   }
+  auth = getAuth(app);
 }
 
-export { app, auth };
+export { auth };

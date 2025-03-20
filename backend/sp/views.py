@@ -1163,42 +1163,77 @@ def process_spads(request):
         return create_response(request, {})
         
     try:
+        # File validation
         file = request.FILES.get('file')
         if not file:
             return create_response(request, {"error": "No file uploaded"}, 400)
         if not file.name.endswith(".xlsx"):
             return create_response(request, {"error": "Invalid file type"}, 400)
         
-        target_acos = float(request.POST.get('target_acos', 0))
-        if target_acos <= 0:
-            return create_response(request, {"error": "Invalid target ACOS"}, 400)
-        
-        expected_headers_str = ["Start Date", "End Date", "Portfolio name", "Currency", "Campaign Name", "Ad Group Name", "Targeting", "Match Type", "Customer Search Term", "Impressions", "Clicks", "Click-Thru Rate (CTR)", "Cost Per Click (CPC)", "Spend", "14 Day Total Sales ", "Total Advertising Cost of Sales (ACOS) ", "Total Return on Advertising Spend (ROAS)", "14 Day Total Orders (#)", "14 Day Total Units (#)", "14 Day Conversion Rate", "14 Day Advertised ASIN Units (#)", "14 Day Brand Halo ASIN Units (#)", "14 Day Advertised ASIN Sales (₹)", "14 Day Brand Halo ASIN Sales (₹)"
-    ]
-        expected_headers_bulk = ["Product", "Entity", "Operation", "Campaign ID", "Ad Group ID", "Portfolio ID", "Ad ID", "Keyword ID", "Product Targeting ID", "Campaign Name", "Ad Group Name", "Campaign Name (Informational only)", "Ad Group Name (Informational only)", "Portfolio Name (Informational only)", "Start Date", "End Date", "Targeting Type", "State", "Campaign State (Informational only)", "Ad Group State (Informational only)", "Daily Budget", "SKU", "ASIN", "Eligibility Status (Informational only)", "Reason for Ineligibility (Informational only)", "Ad Group Default Bid", "Ad Group Default Bid (Informational only)", "Bid", "Keyword Text", "Native Language Keyword", "Native Language Locale", "Match Type", "Bidding Strategy", "Placement", "Percentage", "Product Targeting Expression", "Resolved Product Targeting Expression (Informational only)", "Impressions", "Clicks", "Click-through Rate", "Spend", "Sales", "Orders", "Units", "Conversion Rate", "ACOS", "CPC", "ROAS"
-    ]
+        # ACOS validation
+        try:
+            target_acos = float(request.POST.get('target_acos', 0))
+            if target_acos <= 0:
+                return create_response(request, {"error": "Invalid target ACOS"}, 400)
+        except ValueError:
+            return create_response(request, {"error": "Invalid target ACOS format"}, 400)
+
+        # Define expected headers
+        expected_headers_str = [
+            "Start Date", "End Date", "Portfolio name", "Currency", "Campaign Name", 
+            "Ad Group Name", "Targeting", "Match Type", "Customer Search Term", "Impressions", 
+            "Clicks", "Click-Thru Rate (CTR)", "Cost Per Click (CPC)", "Spend", 
+            "14 Day Total Sales ", "Total Advertising Cost of Sales (ACOS) ", 
+            "Total Return on Advertising Spend (ROAS)", "14 Day Total Orders (#)", 
+            "14 Day Total Units (#)", "14 Day Conversion Rate", 
+            "14 Day Advertised ASIN Units (#)", "14 Day Brand Halo ASIN Units (#)", 
+            "14 Day Advertised ASIN Sales (₹)", "14 Day Brand Halo ASIN Sales (₹)"
+        ]
+
+        expected_headers_bulk = [
+            "Product", "Entity", "Operation", "Campaign ID", "Ad Group ID", 
+            "Portfolio ID", "Ad ID", "Keyword ID", "Product Targeting ID", "Campaign Name", 
+            "Ad Group Name", "Campaign Name (Informational only)", "Ad Group Name (Informational only)", 
+            "Portfolio Name (Informational only)", "Start Date", "End Date", "Targeting Type", 
+            "State", "Campaign State (Informational only)", "Ad Group State (Informational only)", 
+            "Daily Budget", "SKU", "ASIN", "Eligibility Status (Informational only)", 
+            "Reason for Ineligibility (Informational only)", "Ad Group Default Bid", 
+            "Ad Group Default Bid (Informational only)", "Bid", "Keyword Text", 
+            "Native Language Keyword", "Native Language Locale", "Match Type", "Bidding Strategy", 
+            "Placement", "Percentage", "Product Targeting Expression", 
+            "Resolved Product Targeting Expression (Informational only)", "Impressions", 
+            "Clicks", "Click-through Rate", "Spend", "Sales", "Orders", "Units", 
+            "Conversion Rate", "ACOS", "CPC", "ROAS"
+        ]
 
         
 
         # Extract the relevant sheet data into a DataFrame
         try:
             str_df = pd.read_excel(file, sheet_name="SP Search Term Report")
+            if str_df.empty:
+                return create_response(request, {"error": "SP Search Term Report is empty"}, 400)
         except ValueError:
             return create_response(request, {"error": "SP Search Term Report not found in the uploaded file"}, 400)
+        except Exception as e:
+            return create_response(request, {"error": f"Error reading SP Search Term Report: {str(e)}"}, 500)
         
         try:
             bulk_df = pd.read_excel(file, sheet_name="Sponsored Products Campaigns")
+            if bulk_df.empty:
+                return create_response(request, {"error": "Sponsored Products Campaigns is empty"}, 400)
         except ValueError:
             return create_response(request, {"error": "Sponsored Products Campaigns not found in the uploaded file"}, 400)
-        
+        except Exception as e:
+            return create_response(request, {"error": f"Error reading Sponsored Products Campaigns: {str(e)}"}, 500)
 
-        str_df=standardize_headers(str_df,expected_headers_str)
-        bulk_df=standardize_headers(bulk_df,expected_headers_bulk)
-        
+        # Standardize headers
+        str_df = standardize_headers(str_df, expected_headers_str)
+        bulk_df = standardize_headers(bulk_df, expected_headers_bulk)
 
+        # Data filtering
         str_sk = str_df[str_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
         str_mk = str_df[~str_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
-
         bulk_sk = bulk_df[bulk_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
         bulk_mk = bulk_df[~bulk_df["Campaign Name (Informational only)"].str.lower().str.startswith("b0")]
 
@@ -1241,7 +1276,7 @@ def process_spads(request):
         kw_combined_df = pd.concat([kw_df, kw_df_mk], ignore_index=True)
         placement_combined_df = pd.concat([valid_campaigns, valid_campaigns_mk], ignore_index=True)
         RPC_combined_df = pd.concat([RPC_df, RPC_df_mk], ignore_index=True)
-        bulk_summary_combined_df = pd.concat([asin_summary, bulk_summary_mk], ignore_index=True)  
+        bulk_summary_combined_df = pd.concat([asin_summary, bulk_summary_mk], ignore_index=True)
 
         # Combine all the DataFrames into a single DataFrame
         final_combined_df = pd.concat([
@@ -1255,14 +1290,14 @@ def process_spads(request):
             bulk_summary_combined_df
         ], axis=1)
 
-        # Convert the final combined DataFrame to JSON
-        final_combined_json = final_combined_df.to_json(orient="records")
+        if final_combined_df.empty:
+            return create_response(request, {"error": "No data to process"}, 400)
 
-        response = create_response(request, json.loads(final_combined_json))
-        return response
-   
+        final_combined_json = final_combined_df.to_json(orient="records")
+        return create_response(request, json.loads(final_combined_json))
+
     except Exception as e:
-        return create_response(request, {"error combining data": str(e)}, 500)
+        return create_response(request, {"error": f"Unexpected error: {str(e)}"}, 500)
             
 
 def create_response(request, data, status=200):

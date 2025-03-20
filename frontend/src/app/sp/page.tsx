@@ -1,34 +1,40 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useAuth } from "@/lib/context/AuthContext"
-import axios from "axios"
-import { BoltIcon, ChartBarIcon, ShieldCheckIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline"
+import { useState } from 'react'
+import { ArrowDownTrayIcon, BoltIcon, ChartBarIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
 import * as XLSX from 'xlsx'
+import ProtectedRoute from '@/components/auth/protected-route'
+import { useProcessSpAds } from '@/lib/hooks/queries/use-sp-ads'
+import { getErrorDetails } from '@/lib/utils/error-handler'
+import { ErrorMessage } from '@/components/ui/error-message'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { FileInput } from "@/components/ui/file-input"
 
-export default function ListingGeneratorForm() {
-  const { loading } = useAuth()
-  const [csrfToken, setCsrfToken] = useState<string | null>(null)
-  const [error, setError] = useState("")
-  const [apiError, setApiError] = useState<string | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [progress, setProgress] = useState(0)
+export default function SpPage() {
+  return (
+    <ProtectedRoute>
+      <SpAdsForm />
+    </ProtectedRoute>
+  )
+}
+
+function SpAdsForm() {
   const [file, setFile] = useState<File | null>(null)
   const [fileName, setFileName] = useState<string>("")
   const [targetACOS, setTargetACOS] = useState<number>(0)
+  const [progress, setProgress] = useState(0)
   const [outputFile, setOutputFile] = useState<Blob | null>(null)
 
-  // Use environment variables for the backend URL
-  const isDevelopment = process.env.NODE_ENV === 'development';
-    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
-      (isDevelopment ? "http://localhost:8000/" : "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net/");
+  const { 
+    mutate: processSpAds,
+    isPending: isProcessing,
+    error: mutationError,
+    reset: resetMutation
+  } = useProcessSpAds();
 
   const features = [
     {
@@ -48,141 +54,73 @@ export default function ListingGeneratorForm() {
     },
   ]
 
-  useEffect(() => {
-    async function fetchCsrfToken() {
-      try {
-        const response = await axios.get(`${baseUrl}get_csrf/`, {
-          withCredentials: true,
-          timeout: 10000, // 10 second timeout
-        })
-        const data = response.data
-        if (!data.csrfToken) {
-          setError("No security token found. Please try again.")
-          return
-        }
-        setCsrfToken(data.csrfToken)
-      } catch (fetchError) {
-        console.error("CSRF fetch error:", fetchError)
-        if (axios.isAxiosError(fetchError)) {
-          if (fetchError.code === 'ECONNABORTED') {
-            setError("Connection timeout. Please check your internet connection.")
-          } else if (!fetchError.response) {
-            setError("Network error. Please check if backend server is running.")
-          } else {
-            setError("Failed to get security token. Please refresh the page.")
-          }
-        } else {
-          setError("Failed to get security token. Please refresh the page.")
-        }
-      }
-    }
-    fetchCsrfToken()
-  }, [baseUrl])
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFile = event.target.files?.[0]
-    if (uploadedFile) {
+    const files = event.target.files
+    if (files && files.length > 0) {
+      const uploadedFile = files[0]
       setFile(uploadedFile)
       setFileName(uploadedFile.name)
     } else {
       setFile(null)
       setFileName("")
     }
-    setError("")
-    setApiError(null)
   }
 
-  const processExcelFile = async (file: File) => {
-    if (!csrfToken) {
-      setError("Waiting for security token...")
-      return
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!file || targetACOS <= 0) return
 
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("target_acos", targetACOS.toString())
+    setProgress(0)
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev < 20) return prev + 2
+        if (prev < 40) return prev + 1
+        if (prev < 60) return prev + 0.5
+        if (prev < 80) return prev + 0.2
+        if (prev < 90) return prev + 0.1
+        return prev
+      })
+    }, 1000)
 
     try {
-      setError("")
-      setApiError(null)
-      setProgress(20)
-
-      console.log(`Sending request to: ${baseUrl}process_spads/`)
-      const response = await axios.post(
-        `${baseUrl}process_spads/`,
-        formData,
+      await processSpAds(
+        { file, target_acos: targetACOS },
         {
-          headers: {
-            "X-CSRFToken": csrfToken,
-            // "Content-Type": "multipart/form-data",
+          onSuccess: (data) => {
+            clearInterval(progressInterval)
+            setProgress(100)
+            
+            // Convert the response data to Excel
+            const ws = XLSX.utils.json_to_sheet(Array.isArray(data) ? data : [data])
+            const wb = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(wb, ws, "Results")
+            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+            const blob = new Blob([excelBuffer], {
+              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            })
+            setOutputFile(blob)
           },
-          withCredentials: true,
-          timeout: 60000, // 60 second timeout for file processing
+          onError: () => {
+            clearInterval(progressInterval)
+            setProgress(0)
+            // console.error('Error processing file:', error)
+          },
         }
       )
-      
-      setProgress(60)
-
-      if (response.status === 200) {
-        // Convert the JSON response to Excel
-        const ws = XLSX.utils.json_to_sheet(response.data)
-        const wb = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(wb, ws, "Results")
-        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        const blob = new Blob([excelBuffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        })
-        setOutputFile(blob)
-        setProgress(100)
-      }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error("Axios error processing file:", error)
-        if (error.code === 'ECONNABORTED') {
-          setApiError("Request timed out. The server might be busy or the file is too large.")
-        } else if (error.response) {
-          if (error.response.data && typeof error.response.data === 'string' && 
-              error.response.data.includes("'list' object has no attribute 'items'")) {
-            setApiError("Backend error: The product data format is invalid. Please try again with different data.")
-          } else {
-            const errorMessage = typeof error.response.data === 'object' && error.response.data.error
-              ? error.response.data.error
-              : typeof error.response.data === 'string'
-                ? error.response.data
-                : `Server error: ${error.response.status}`
-            setApiError(errorMessage)
-          }
-        } else if (error.request) {
-          setApiError("Network Error: No response received from the server. Please check your internet connection.")
-        } else {
-          setApiError(`Error: ${error.message}`)
-        }
-      } else {
-        console.error("Unexpected error:", error)
-        setError("Failed to process file")
-      }
-    } finally {
-      setIsProcessing(false)
+      clearInterval(progressInterval)
+      setProgress(0)
+      // console.error('Unexpected error:', error)
     }
   }
 
   const handleReset = () => {
-    setError("")
-    setApiError(null)
-    setIsProcessing(false)
-    setProgress(0)
     setFile(null)
     setFileName("")
     setTargetACOS(0)
+    setProgress(0)
     setOutputFile(null)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-yellow-400"></div>
-      </div>
-    )
   }
 
   return (
@@ -199,38 +137,57 @@ export default function ListingGeneratorForm() {
           </CardHeader>
 
           <CardContent className="pt-8">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (!file || targetACOS <= 0) {
-                  setError("Please provide both file and target ACOS")
-                  return
-                }
-                if (!csrfToken) {
-                  setError("Please wait for security token...")
-                  return
-                }
-                setIsProcessing(true)
-                processExcelFile(file)
-              }}
-              className="space-y-8"
-            >
+            <form onSubmit={handleSubmit} className="space-y-8">
               <div className="space-y-4 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50">
                 <Label htmlFor="targetACOS" className="text-yellow-400 text-lg font-medium">
                   Target ACOS
                 </Label>
                 <div className="flex flex-col space-y-2">
-                  <Input
-                    id="targetACOS"
-                    type="number"
-                    value={targetACOS}
-                    onChange={(value) => setTargetACOS(value)}
-                    className="w-1/4 bg-gray-800 text-white border-gray-700 focus:ring-yellow-400 focus:border-yellow-400"
-                    placeholder="Enter Target ACOS"
-                    step="0.01"
-                    min="0"
-                    max="1"
-                  />
+                  <div className="relative w-1/4">
+                    <input
+                      id="targetACOS"
+                      type="number"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={targetACOS}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value)
+                        if (!isNaN(value)) {
+                          const clampedValue = Math.min(Math.max(value, 0), 1)
+                          setTargetACOS(Number(clampedValue.toFixed(2)))
+                        }
+                      }}
+                      className="w-full bg-gray-900 text-white border border-gray-700 focus:ring-1 focus:ring-yellow-400/50 focus:border-yellow-400/50 rounded-md p-2 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-8 text-sm font-medium"
+                      placeholder="0.25"
+                    />
+                    <div className="absolute right-0 top-0 bottom-0 w-7 flex flex-col border-l border-gray-700/50">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newValue = Math.min(targetACOS + 0.01, 1)
+                          setTargetACOS(Number(newValue.toFixed(2)))
+                        }}
+                        className="flex-1 flex items-center justify-center hover:bg-gray-800 text-gray-500 hover:text-yellow-400 transition-all duration-150 rounded-tr-md"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                          <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newValue = Math.max(targetACOS - 0.01, 0)
+                          setTargetACOS(Number(newValue.toFixed(2)))
+                        }}
+                        className="flex-1 flex items-center justify-center hover:bg-gray-800 text-gray-500 hover:text-yellow-400 transition-all duration-150 rounded-br-md border-t border-gray-700/50"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                   <p className="text-gray-400 text-sm">Enter a value between 0 and 1 (e.g., 0.25 for 25% ACOS)</p>
                 </div>
               </div>
@@ -298,7 +255,10 @@ export default function ListingGeneratorForm() {
               <div className="mt-8 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50 space-y-4">
                 <Label className="text-yellow-400 font-medium">Processing Your Excel File...</Label>
                 <Progress value={progress} className="w-full h-2 bg-gray-700" />
-                <p className="text-gray-400 text-sm">This may take a minute. Please don&apos;t close this page.</p>
+                <p className="text-gray-400 text-sm">
+                  This process may take 5-6 minutes to complete. Please keep this page open.
+                  We are analyzing your campaigns and optimizing bids for maximum performance.
+                </p>
               </div>
             )}
 
@@ -330,26 +290,17 @@ export default function ListingGeneratorForm() {
               </div>
             )}
 
-            {error && (
-              <div className="mt-8 p-4 bg-red-900/20 rounded-lg border border-red-700/50">
-                <p className="text-red-400 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  Error: {error}
-                </p>
-              </div>
-            )}
-
-            {apiError && (
-              <div className="mt-8 p-4 bg-red-900/20 rounded-lg border border-red-700/50">
-                <p className="text-red-400 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  Server Error: {apiError}
-                </p>
-              </div>
+            {mutationError && (
+              <ErrorMessage
+                {...getErrorDetails(mutationError)}
+                className="mt-8"
+                onRetry={() => {
+                  resetMutation()
+                  if (file && targetACOS > 0) {
+                    processSpAds({ file, target_acos: targetACOS })
+                  }
+                }}
+              />
             )}
           </CardContent>
         </Card>
