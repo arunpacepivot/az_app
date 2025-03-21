@@ -107,6 +107,11 @@ function ListingGeneratorForm() {
             return;
         }
 
+        if (!selectedCountry) {
+            setError("Please select a country.");
+            return;
+        }
+
         setError("");
         setProgress(0);
 
@@ -116,26 +121,28 @@ function ListingGeneratorForm() {
 
         try {
           await processListings(
-            { asins, geography: selectedCountry },
+            { asins: sanitizedAsins.join(','), geography: selectedCountry },
             {
               onSuccess: (data) => {
                 console.log('Received listings data:', data);
                 clearInterval(progressInterval);
                 setProgress(100);
                 if (!data || !Array.isArray(data) || data.length === 0) {
-                  console.error('Invalid or empty listings data:', data);
+                  // console.error('Invalid or empty listings data:', data);
                   setError("No listings found in the response.");
+                  return;
                 }
               },
               onError: (error) => {
-                console.error('Mutation error:', error);
+                // console.error('Mutation error:', error);
                 clearInterval(progressInterval);
+                setProgress(0);
                 setError(error.message || "Failed to generate listings");
               },
             }
           );
         } catch (error) {
-          console.error('Unexpected error:', error);
+          // console.error('Unexpected error:', error);
           clearInterval(progressInterval);
           setError("An unexpected error occurred");
         }
