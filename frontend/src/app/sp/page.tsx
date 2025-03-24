@@ -29,12 +29,8 @@ function SpAdsForm() {
   const [progress, setProgress] = useState(0)
   const [outputFile, setOutputFile] = useState<Blob | null>(null)
 
-  const { 
-    mutate: processSpAds,
-    isPending: isProcessing,
-    error: mutationError,
-    reset: resetMutation
-  } = useProcessSpAds();
+  const baseUrl = "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net/"
+  const AXIOS_TIMEOUT = 30000; // 30 seconds
 
   const features = [
     {
@@ -54,57 +50,66 @@ function SpAdsForm() {
     },
   ]
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (files && files.length > 0) {
-      const uploadedFile = files[0]
-      setFile(uploadedFile)
-      setFileName(uploadedFile.name)
-    } else {
-      setFile(null)
-      setFileName("")
+  useEffect(() => {
+    async function fetchCsrfToken() {
+      try {
+        const response = await axios.get(`${baseUrl}get_csrf/`, {
+          withCredentials: true,
+        });
+        
+        if (!response.data?.csrfToken) {
+          setError("Failed to get CSRF token from server");
+          return;
+        }
+        
+        setCsrfToken(response.data.csrfToken);
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          setError(`CSRF Error: ${error.response?.data?.error || error.message}`);
+        } else {
+          setError("Failed to fetch CSRF token");
+        }
+      }
     }
+    fetchCsrfToken();
+  }, []);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = event.target.files?.[0]
+    
+    if (uploadedFile) {
+      // Check file type
+      if (!uploadedFile.name.endsWith('.xlsx')) {
+        setError("Please upload an Excel (.xlsx) file");
+        return;
+      }
+      
+      // Check file size (e.g., 10MB limit)
+      if (uploadedFile.size > 10 * 1024 * 1024) {
+        setError("File size must be less than 10MB");
+        return;
+      }
+    }
+    
+    setFile(uploadedFile || null)
+    setError("")
+    setApiError(null)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!file || targetACOS <= 0) return
-
-    setProgress(0)
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev < 20) return prev + 0.5  // Slower progress at the beginning
-        if (prev < 40) return prev + 0.3
-        if (prev < 60) return prev + 0.2
-        if (prev < 80) return prev + 0.1
-        if (prev < 90) return prev + 0.05
-        return prev
-      })
-    }, 1000)
+  const processExcelFile = async (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("target_acos", targetACOS.toString())
 
     try {
       await processSpAds(
         { file, target_acos: targetACOS },
         {
-          onSuccess: (data) => {
-            clearInterval(progressInterval)
-            setProgress(100)
-            
-            // Convert the response data to Excel
-            const ws = XLSX.utils.json_to_sheet(Array.isArray(data) ? data : [data])
-            const wb = XLSX.utils.book_new()
-            XLSX.utils.book_append_sheet(wb, ws, "Results")
-            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-            const blob = new Blob([excelBuffer], {
-              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            })
-            setOutputFile(blob)
+          headers: {
+            "X-CSRFToken": csrfToken,
           },
-          onError: () => {
-            clearInterval(progressInterval)
-            setProgress(0)
-            // console.error('Error processing file:', error)
-          },
+          withCredentials: true,
+          timeout: AXIOS_TIMEOUT,
         }
       )
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -136,10 +141,21 @@ function SpAdsForm() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="pt-8">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="space-y-4 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50">
-                <Label htmlFor="targetACOS" className="text-yellow-400 text-lg font-medium">
+          <CardContent>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (!file || targetACOS <= 0) {
+                  setError("Please provide both file and target ACOS")
+                  return
+                }
+                setIsProcessing(true)
+                processExcelFile(file)
+              }}
+              className="space-y-12"
+            >
+              <div className="space-y-8 p-4">
+                <Label htmlFor="targetACOS" className="text-yellow-400">
                   Target ACOS
                 </Label>
                 <div className="flex flex-col space-y-2">
