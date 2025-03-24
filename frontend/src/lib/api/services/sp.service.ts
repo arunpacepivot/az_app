@@ -14,6 +14,7 @@ export const spService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 3000000, // 5 minutes timeout
     });
     return response.data;
   },

@@ -8,7 +8,8 @@ export const useProcessSpAds = (): UseMutationResult<ProcessedFile, ApiError, Sp
       const response = await spService.processSpAds(payload);
       return response.data;
     },
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // Retry logic commented out - will implement later
+    // retry: 2,
+    // retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 60000),
   });
 }; 

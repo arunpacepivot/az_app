@@ -158,7 +158,15 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST Framework settings
+# File upload settings
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600   # 100 MB
+
+# Increase timeouts for long-running processes
+# 15 minute timeout for requests
+REQUEST_TIMEOUT = 900
+
+# Django REST Framework settings 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
@@ -168,7 +176,11 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser',
     ],
+    # Set longer timeout
+    'DEFAULT_TIMEOUT': 900,  # 15 minutes
 }
 
 # CORS settings
@@ -230,21 +242,49 @@ X_FRAME_OPTIONS = 'DENY'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'level': 'DEBUG',
         },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'ERROR',
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
+            'level': 'DEBUG',
+        },
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
-            'level': 'ERROR',
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.server': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
             'propagate': False,
         },
+        'sp': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'DEBUG',
     },
 }
 

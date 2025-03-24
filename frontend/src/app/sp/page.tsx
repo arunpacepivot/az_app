@@ -73,11 +73,11 @@ function SpAdsForm() {
     setProgress(0)
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        if (prev < 20) return prev + 2
-        if (prev < 40) return prev + 1
-        if (prev < 60) return prev + 0.5
-        if (prev < 80) return prev + 0.2
-        if (prev < 90) return prev + 0.1
+        if (prev < 20) return prev + 0.5  // Slower progress at the beginning
+        if (prev < 40) return prev + 0.3
+        if (prev < 60) return prev + 0.2
+        if (prev < 80) return prev + 0.1
+        if (prev < 90) return prev + 0.05
         return prev
       })
     }, 1000)

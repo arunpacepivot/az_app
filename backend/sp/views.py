@@ -3,7 +3,8 @@ from rest_framework import viewsets
 from .models import ProcessedFile
 from .serializers import ProcessedFileSerializer
 import re
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.middleware.csrf import get_token
@@ -1156,6 +1157,7 @@ def standardize_headers(df, expected_headers):
 
 @csrf_exempt
 @api_view(['POST', 'OPTIONS']) #added api_view
+@parser_classes([MultiPartParser, FormParser])
 @require_http_methods(['POST', 'OPTIONS'])
 def process_spads(request):
     

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { apiClient } from '../config';
 import { ApiResponse, Listing, ListingPayload } from '../types';
 
@@ -65,6 +66,7 @@ export const listingService = {
         status: response.status,
         message: response.data.message
       };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error getting saved listings:', error);
       throw {

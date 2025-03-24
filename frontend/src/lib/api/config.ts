@@ -18,14 +18,14 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 // Add retry logic
-axiosRetry(apiClient, {
-  retries: 3,
-  retryDelay: axiosRetry.exponentialDelay,
-  retryCondition: (error: AxiosError) => {
-    return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
-           (error.response?.status ? error.response.status >= 500 : false);
-  }
-});
+// axiosRetry(apiClient, {
+//   retries: 3,
+//   retryDelay: axiosRetry.exponentialDelay,
+//   retryCondition: (error: AxiosError) => {
+//     return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+//            (error.response?.status ? error.response.status >= 500 : false);
+//   }
+// });
 
 // Authentication interceptor
 apiClient.interceptors.request.use(
