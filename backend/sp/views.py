@@ -78,8 +78,8 @@ def process_spads(request):
         except ValueError:
             return create_response(request, {"error": "Invalid target ACOS format"}, 400)
 
-        # Save the uploaded file temporarily
-        temp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'temp')
+        # Python code for Azure compatibility
+        temp_dir = os.environ.get('TEMP', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'temp'))
         os.makedirs(temp_dir, exist_ok=True)
         
         temp_file_path = os.path.join(temp_dir, file.name)
@@ -352,8 +352,8 @@ def optimize_all(request):
         except ValueError:
             return create_response(request, {"error": "Invalid target ACOS format"}, 400)
 
-        # Save the uploaded file temporarily
-        temp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'temp')
+        #  Python code for Azure compatibility
+        temp_dir = os.environ.get('TEMP', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'temp'))
         os.makedirs(temp_dir, exist_ok=True)
         
         temp_file_path = os.path.join(temp_dir, file.name)
