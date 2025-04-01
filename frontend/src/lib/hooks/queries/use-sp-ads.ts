@@ -1,12 +1,11 @@
 import { useMutation, UseMutationResult } from '@tanstack/react-query';
 import { spService } from '@/lib/api/services/sp.service';
-import { SpAdsPayload, ProcessedFile, ApiError } from '@/lib/api/types';
+import { SpAdsPayload, ApiError, SpAdsResponse } from '@/lib/api/types';
 
-export const useProcessSpAds = (): UseMutationResult<ProcessedFile, ApiError, SpAdsPayload> => {
+export const useProcessSpAds = (): UseMutationResult<SpAdsResponse, ApiError, SpAdsPayload> => {
   return useMutation({
     mutationFn: async (payload: SpAdsPayload) => {
-      const response = await spService.processSpAds(payload);
-      return response.data;
+      return await spService.processSpAds(payload);
     },
     // Retry logic commented out - will implement later
     // retry: 2,

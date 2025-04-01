@@ -1,23 +1,63 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import React, { useRef, useState } from 'react'
+import { cn } from '@/lib/utils'
 
-export interface FileInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {}
+interface FileInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  onFileSelect?: (file: File) => void
+}
 
-const FileInput = React.forwardRef<HTMLInputElement, FileInputProps>(
-  ({ className, ...props }, ref) => {
+export const FileInput = React.forwardRef<HTMLInputElement, FileInputProps>(
+  ({ className, onFileSelect, id, ...props }, ref) => {
+    const inputRef = useRef<HTMLInputElement | null>(null)
+    const [dragActive, setDragActive] = useState(false)
+
+    const handleFiles = (files: FileList | null) => {
+      if (files && files.length > 0) {
+        const file = files[0]
+        onFileSelect?.(file)
+      }
+    }
+
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      handleFiles(event.target.files)
+    }
+
+    const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.type === 'dragenter' || e.type === 'dragover') {
+        setDragActive(true)
+      } else if (e.type === 'dragleave') {
+        setDragActive(false)
+      }
+    }
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setDragActive(false)
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files)
+      }
+    }
+
     return (
       <input
+        ref={(node) => {
+          if (typeof ref === 'function') {
+            ref(node)
+          } else if (ref) {
+            ref.current = node
+          }
+          inputRef.current = node
+        }}
         type="file"
-        className={cn(
-          "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        ref={ref}
+        onChange={handleChange}
+        className={cn(className)}
+        id={id}
         {...props}
       />
-    );
+    )
   }
-);
-FileInput.displayName = "FileInput";
+)
 
-export { FileInput }; 
+FileInput.displayName = 'FileInput' 

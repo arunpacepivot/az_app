@@ -1,4 +1,4 @@
-from django.db import connections
+﻿from django.db import connections
 from django.db.utils import OperationalError
 from django.core.management.base import BaseCommand
 
@@ -12,3 +12,4 @@ def test_connection():
 
 if __name__ == "__main__":
     test_connection()
+

@@ -1,4 +1,4 @@
-from django.apps import AppConfig
+﻿from django.apps import AppConfig
 
 
 class ListerConfig(AppConfig):
@@ -6,4 +6,5 @@ class ListerConfig(AppConfig):
     name = 'lister'
 
    
+
 

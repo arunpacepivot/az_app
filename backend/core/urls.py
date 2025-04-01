@@ -1,4 +1,4 @@
-"""
+﻿"""
 URL configuration for core project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
@@ -18,7 +18,7 @@ from django.urls import path, include
 from django.http import JsonResponse
 from django.contrib import admin
 from lister.views import get_csrf  # Import the CSRF view directly
-from sp.views import get_csrf  # Import the CSRF view directly
+from sp.views import get_csrf, optimize_all  # Import the CSRF view and optimize_all view
 
 # Root view
 def api_root(request):
@@ -29,7 +29,10 @@ def api_root(request):
             "health_check": "/api/v1/health/",
             "lister": "api/v1/lister/",
             "csrf": "/get_csrf/",
-            "sp": "/api/v1/sp/"
+            "sp": "/api/v1/sp/",
+            "sb": "/api/v1/sb/",
+            "sd": "/api/v1/sd/",
+            "optimize_all": "/api/v1/optimize/all/"
         }
     })
 
@@ -38,6 +41,9 @@ api_v1_patterns = [
     path('health/', include('health.urls')),
     path('lister/', include('lister.urls')),
     path('sp/', include('sp.urls')),
+    path('sb/', include('sb.urls')),
+    path('sd/', include('sd.urls')),
+    path('optimize/all/', optimize_all, name='optimize_all'),
 ]
 
 urlpatterns = [

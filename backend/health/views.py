@@ -1,4 +1,4 @@
-from rest_framework.decorators import api_view
+﻿from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -29,3 +29,4 @@ def connectivity_test(request):
             "status": "error",
             "message": str(e)
         }, status=status.HTTP_400_BAD_REQUEST)
+

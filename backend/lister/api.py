@@ -1,4 +1,4 @@
-import requests
+﻿import requests
 import json
 def get_product_details(product_url):
     url = "https://axesso-axesso-amazon-data-service-v1.p.rapidapi.com/amz/amazon-lookup-product"

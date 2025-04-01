@@ -5,6 +5,10 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+export interface SheetRow {
+  [key: string]: string | number | boolean | null;
+}
+
 // Listing types
 export interface Listing {
   [key: string]: string;
@@ -33,4 +37,15 @@ export interface ApiError {
   message: string;
   code?: string;
   details?: unknown;
+}
+
+export interface SpAdsResponse {
+  data: {
+    [sheetName: string]: SheetRow[];
+  };
+  excel_file: {
+    filename: string;
+    content: string;
+    content_type: string;
+  };
 } 

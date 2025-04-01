@@ -1,4 +1,4 @@
-import requests
+﻿import requests
 url = "https://parazun-amazon-data.p.rapidapi.com/product/"
 
 querystring = {"asin":"B097G95G1K","region":"US"}
@@ -29,3 +29,4 @@ def extract_text_from_json(json_obj, text_list):
 
 text_list = []
 extract_text_from_json(data, text_list)
+

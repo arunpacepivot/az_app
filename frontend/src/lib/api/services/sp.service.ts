@@ -1,16 +1,16 @@
 import { apiClient } from '../config';
-import { ApiResponse, SpAdsPayload, ProcessedFile } from '../types';
+import { ApiResponse, SpAdsPayload, SpAdsResponse, ProcessedFile } from '../types';
 
 export const spService = {
   /**
    * Process SP ads file
    */
-  processSpAds: async (payload: SpAdsPayload): Promise<ApiResponse<ProcessedFile>> => {
+  processSpAds: async (payload: SpAdsPayload): Promise<SpAdsResponse> => {
     const formData = new FormData();
     formData.append('file', payload.file);
     formData.append('target_acos', payload.target_acos.toString());
 
-    const response = await apiClient.post('api/v1/sp/process_spads/', formData, {
+    const response = await apiClient.post('api/v1/optimize/all/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
