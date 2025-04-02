@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'sp',
     'sb',
     'sd',
+    'cerebro',
+    'sqp',
 ]
 
 MIDDLEWARE = [

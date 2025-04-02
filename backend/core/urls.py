@@ -32,6 +32,8 @@ def api_root(request):
             "sp": "/api/v1/sp/",
             "sb": "/api/v1/sb/",
             "sd": "/api/v1/sd/",
+            "cerebro": "/api/v1/cerebro/",
+            "sqp": "/api/v1/sqp/",
             "optimize_all": "/api/v1/optimize/all/"
         }
     })
@@ -43,6 +45,8 @@ api_v1_patterns = [
     path('sp/', include('sp.urls')),
     path('sb/', include('sb.urls')),
     path('sd/', include('sd.urls')),
+    path('cerebro/', include('cerebro.urls')),
+    path('sqp/', include('sqp.urls')),
     path('optimize/all/', optimize_all, name='optimize_all'),
 ]
 
