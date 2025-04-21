@@ -130,3 +130,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix for dropdown visibility */
+.dropdown-menu, .absolute {
+  z-index: 100 !important;
+}
+
+/* Make sure navigation has proper positioning context */
+nav {
+  position: relative;
+  z-index: 50;
+}

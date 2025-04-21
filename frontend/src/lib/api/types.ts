@@ -32,6 +32,79 @@ export interface ProcessedFile {
   createdAt: string;
 }
 
+// N-gram Analysis types
+export interface NgramPayload {
+  file: File;
+  target_acos: number;
+}
+
+export interface NgramFile {
+  filename: string;
+  url: string;
+  file_id: string;
+  type: string;
+}
+
+export interface NgramResponse {
+  data: {
+    status: string;
+    message: string;
+    sk_asin_count: number;
+    mk_asin_count: number;
+    data: Record<string, any[]>;
+    files: NgramFile[];
+  };
+  status: number;
+}
+
+// Topical Analysis types
+export interface TopicalPayload {
+  file: File;
+  min_search_volume: number;
+}
+
+export interface TopicalFile {
+  filename: string;
+  url: string;
+  file_id: string;
+}
+
+export interface TopicalResponse {
+  data: {
+    status: string;
+    message: string;
+    b0_asin_count: number;
+    non_b0_asin_count: number;
+    data: Record<string, any[]>;
+    file: TopicalFile;
+  };
+  status: number;
+}
+
+// Cerebro Analysis types
+export interface CerebroPayload {
+  file: File;
+  min_search_volume: number;
+}
+
+export interface CerebroFile {
+  filename: string;
+  url: string;
+  file_id: string;
+}
+
+export interface CerebroResponse {
+  data: {
+    status: string;
+    message: string;
+    keyword_count: number;
+    search_volume_avg: number;
+    data: Record<string, any[]>;
+    file: CerebroFile;
+  };
+  status: number;
+}
+
 // Error types
 export interface ApiError {
   message: string;

@@ -7,11 +7,18 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 export const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 
   (isDevelopment ? "http://localhost:8000/" : "https://django-backend-epcse2awb3cyh5e8.centralindia-01.azurewebsites.net/");
 
+// Log API URL for debugging
+console.log(`API base URL: ${API_BASE_URL} (${isDevelopment ? 'development' : 'production'})`);
+
+// Default timeout value for consistency across the app
+export const DEFAULT_TIMEOUT = 30000;
+export const LONG_OPERATION_TIMEOUT = 100000; // ~1.7 minutes for longer operations
+
 // Create axios instance with default config
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
-  timeout: 30000,
+  timeout: DEFAULT_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -66,7 +73,7 @@ let csrfToken: string | null = null;
 
 const getCsrfToken = async (): Promise<string> => {
   if (!csrfToken) {
-    const response = await apiClient.get('get_csrf/', { timeout: 10000 });
+    const response = await apiClient.get('get_csrf/', { timeout: DEFAULT_TIMEOUT });
     if (response.data?.csrfToken) {
       csrfToken = response.data.csrfToken;
     } else {
