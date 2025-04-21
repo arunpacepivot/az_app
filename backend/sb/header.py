@@ -99,14 +99,16 @@ def final_sb_optimisation(file_path, sheet_name_bulk, sheet_name_str, output_fil
         target_df.to_excel(writer, sheet_name="Target Data", index=False)
         bid_optimisation_df.to_excel(writer, sheet_name="Bid Optimisation", index=False)
         placement_optimisation_df.to_excel(writer, sheet_name="Placement Optimisation", index=False)
-        pt_df_mk.to_excel(writer, sheet_name="PT Data", index=False)
-        kw_df_mk.to_excel(writer, sheet_name="KW Data", index=False)
         harvested_df.to_excel(writer, sheet_name="Harvested Data", index=False)
-        filtered_bulk_df.to_excel(writer, sheet_name="Filtered Bulk Data MK", index=False)
-        filtered_bulk_df_sk.to_excel(writer, sheet_name="Filtered Bulk Data SK", index=False)
-        placement_df.to_excel(writer, sheet_name="Placement Data MK", index=False)
-        placement_df_sk.to_excel(writer, sheet_name="Placement Data SK", index=False)
-        combined_df.to_excel(writer, sheet_name="Aggregated Data", index=False)
+        
+        # Commenting out less essential sheets to reduce file size
+        # pt_df_mk.to_excel(writer, sheet_name="PT Data", index=False)
+        # kw_df_mk.to_excel(writer, sheet_name="KW Data", index=False)
+        # filtered_bulk_df.to_excel(writer, sheet_name="Filtered Bulk Data MK", index=False)
+        # filtered_bulk_df_sk.to_excel(writer, sheet_name="Filtered Bulk Data SK", index=False)
+        # placement_df.to_excel(writer, sheet_name="Placement Data MK", index=False)
+        # placement_df_sk.to_excel(writer, sheet_name="Placement Data SK", index=False)
+        # combined_df.to_excel(writer, sheet_name="Aggregated Data", index=False)
         # placement_summary.to_excel(writer, sheet_name="Placement Summary", index=False)
 if __name__ == "__main__":
     bulk_file_path = '/mnt/c/Users/arun/Downloads/Reports/bulk skillofun wk10.xlsx'

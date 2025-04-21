@@ -91,29 +91,32 @@ def save_to_excel(output_file_path, deduped_df, result_df, campaign_df, pt_df, k
 
     with pd.ExcelWriter(output_file_path, engine="xlsxwriter") as writer:
         # Write each DataFrame to a specific sheet
+        # Main essential sheets
         deduped_df.to_excel(writer, sheet_name="New campaigns", index=False)
-        campaign_df.to_excel(writer, sheet_name="New campaigns-df", index=False)
-        pt_combined_df.to_excel(writer, sheet_name="Product Negation", index=False)
-        kw_combined_df.to_excel(writer, sheet_name="Keyword Negation", index=False)
         combined_df.to_excel(writer, sheet_name="Bids Optimized", index=False)
-        # placement_combined_df.to_excel(writer, sheet_name="Placement Optimized", index=False)
-        RPC_combined_df.to_excel(writer, sheet_name="RPC & Bids", index=False)
-        bulk_summary_combined_df.to_excel(writer, sheet_name="ASIN Summary", index=False)
         result_df.to_excel(writer, sheet_name="Harvested Campaign", index=False)
-        # filtered_df_str.to_excel(writer, sheet_name="Harvested Campaign SK", index=False)
-        pt_df.to_excel(writer, sheet_name="Product Negation SK", index=False)
-        pt_df_mk.to_excel(writer, sheet_name="Product Negation MK", index=False)
-        kw_df.to_excel(writer, sheet_name="Keyword Negation SK", index=False)
-        kw_df_mk.to_excel(writer, sheet_name="Keyword Negation MK", index=False)
-        filtered_bulk_df.to_excel(writer, sheet_name="Bids Optimized SK", index=False)
-        filtered_bulk_df_mk.to_excel(writer, sheet_name="Bids Optimized MK", index=False)
-        new_bid_df_mk.to_excel(writer, sheet_name="Budget Optimized MK", index=False)
-        valid_campaigns_sk.to_excel(writer, sheet_name="Placement Optimized SK", index=False)
-        valid_campaigns_mk.to_excel(writer, sheet_name="Placement Optimized MK", index=False)
-        RPC_df.to_excel(writer, sheet_name="RPC & Bids SK", index=False)
-        RPC_df_mk.to_excel(writer, sheet_name="RPC & Bids MK", index=False)
-        bulk_summary_mk.to_excel(writer, sheet_name="ASIN Summary MK", index=False)
-        asin_summary.to_excel(writer, sheet_name="ASIN Summary SK", index=False)
+        
+        # Commenting out less essential sheets to reduce file size
+        # campaign_df.to_excel(writer, sheet_name="New campaigns-df", index=False)
+        # pt_combined_df.to_excel(writer, sheet_name="Product Negation", index=False)
+        # kw_combined_df.to_excel(writer, sheet_name="Keyword Negation", index=False)
+        # RPC_combined_df.to_excel(writer, sheet_name="RPC & Bids", index=False)
+        # bulk_summary_combined_df.to_excel(writer, sheet_name="ASIN Summary", index=False)
+        
+        # Commenting out detailed debug/test sheets
+        # pt_df.to_excel(writer, sheet_name="Product Negation SK", index=False)
+        # pt_df_mk.to_excel(writer, sheet_name="Product Negation MK", index=False)
+        # kw_df.to_excel(writer, sheet_name="Keyword Negation SK", index=False)
+        # kw_df_mk.to_excel(writer, sheet_name="Keyword Negation MK", index=False)
+        # filtered_bulk_df.to_excel(writer, sheet_name="Bids Optimized SK", index=False)
+        # filtered_bulk_df_mk.to_excel(writer, sheet_name="Bids Optimized MK", index=False)
+        # new_bid_df_mk.to_excel(writer, sheet_name="Budget Optimized MK", index=False)
+        # valid_campaigns_sk.to_excel(writer, sheet_name="Placement Optimized SK", index=False)
+        # valid_campaigns_mk.to_excel(writer, sheet_name="Placement Optimized MK", index=False)
+        # RPC_df.to_excel(writer, sheet_name="RPC & Bids SK", index=False)
+        # RPC_df_mk.to_excel(writer, sheet_name="RPC & Bids MK", index=False)
+        # bulk_summary_mk.to_excel(writer, sheet_name="ASIN Summary MK", index=False)
+        # asin_summary.to_excel(writer, sheet_name="ASIN Summary SK", index=False)
     print(f"DataFrames have been successfully exported to {output_file_path}")
 
 def final_sp_optimisation(file_path, output_file_path, target_acos, sheet_name_bulk, sheet_name_str):

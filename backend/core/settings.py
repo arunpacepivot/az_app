@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     'sd',
     'cerebro',
     'sqp',
+    'ngram',
+    'topical',
+    'logger',
 ]
 
 MIDDLEWARE = [
@@ -65,6 +68,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'logger.middleware.ErrorLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'

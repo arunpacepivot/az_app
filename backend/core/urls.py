@@ -19,6 +19,7 @@ from django.http import JsonResponse
 from django.contrib import admin
 from lister.views import get_csrf  # Import the CSRF view directly
 from sp.views import get_csrf, optimize_all  # Import the CSRF view and optimize_all view
+from .file_views import download_file, file_info, remove_file  # Import file API views
 
 # Root view
 def api_root(request):
@@ -34,9 +35,20 @@ def api_root(request):
             "sd": "/api/v1/sd/",
             "cerebro": "/api/v1/cerebro/",
             "sqp": "/api/v1/sqp/",
-            "optimize_all": "/api/v1/optimize/all/"
+            "ngram": "/api/v1/ngram/",
+            "topical": "/api/v1/topical/",
+            "files": "/api/v1/files/",
+            "optimize_all": "/api/v1/optimize/all/",
+            "logger": "/api/v1/logger/"
         }
     })
+
+# File API patterns
+file_api_patterns = [
+    path('download/<str:file_id>/', download_file, name='download_file'),
+    path('info/<str:file_id>/', file_info, name='file_info'),
+    path('delete/<str:file_id>/', remove_file, name='remove_file'),
+]
 
 # API Version patterns
 api_v1_patterns = [
@@ -47,7 +59,11 @@ api_v1_patterns = [
     path('sd/', include('sd.urls')),
     path('cerebro/', include('cerebro.urls')),
     path('sqp/', include('sqp.urls')),
+    path('ngram/', include('ngram.urls')),
+    path('topical/', include('topical.urls')),
+    path('files/', include((file_api_patterns, 'files'))),
     path('optimize/all/', optimize_all, name='optimize_all'),
+    path('logger/', include('logger.urls')),
 ]
 
 urlpatterns = [

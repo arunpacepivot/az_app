@@ -19,6 +19,7 @@ from fuzzywuzzy import process
 from .header import final_sp_optimisation, match_headers, standardize_headers
 import base64
 from io import BytesIO
+from core.file_service import save_temp_file, get_excel_data, get_file_url
 
 # Import SB and SD modules (wrapped in try-except to handle potential import errors)
 try:
@@ -116,39 +117,32 @@ def process_spads(request):
         if not os.path.exists(output_file_path):
             return create_response(request, {"error": "Failed to process the file"}, 500)
             
+        # Save file to file service and get its ID
+        file_id = save_temp_file(output_file_path, f"Optimized_SP_{file.name}")
+            
         # Extract data from the output Excel file for JSON response
-        result_data = {}
-        with pd.ExcelFile(output_file_path) as xls:
-            for sheet_name in xls.sheet_names:
-                result_data[sheet_name] = pd.read_excel(xls, sheet_name=sheet_name).to_dict(orient="records")
+        result_data = get_excel_data(file_id)
         
-        # Get base64 encoded Excel file
-        with open(output_file_path, 'rb') as excel_file:
-            encoded_excel = base64.b64encode(excel_file.read()).decode('utf-8')
-        
-        # Create response with both JSON data and Excel file
+        # Create response with JSON data and file reference
         response_data = {
             'data': result_data,
-            'excel_file': {
+            'file': {
                 'filename': f"Optimized_SP_{file.name}",
-                'content': encoded_excel,
-                'content_type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                'url': get_file_url(file_id, request),
+                'file_id': file_id
             }
         }
         
         # Clean up temporary files
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
-        if os.path.exists(output_file_path):
-            os.remove(output_file_path)
             
         return create_response(request, response_data)
 
     except Exception as e:
         # Clean up any temporary files
-        for file_path in [temp_file_path, output_file_path]:
-            if 'file_path' in locals() and os.path.exists(file_path):
-                os.remove(file_path)
+        if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
                 
         return create_response(request, {"error": f"Unexpected error: {str(e)}"}, 500)
 
@@ -530,23 +524,19 @@ def optimize_all(request):
                                 df = pd.read_excel(xls, sheet_name=sheet_name)
                                 df.to_excel(writer, sheet_name=f"SD_{sheet_name}", index=False)
                 
+                # Save combined file to file service and get the file ID
+                file_id = save_temp_file(combined_output_path)
+                
                 # Extract ALL data from the output Excel file for JSON response
-                combined_data = {}
-                with pd.ExcelFile(combined_output_path) as xls:
-                    for sheet_name in xls.sheet_names:
-                        combined_data[sheet_name] = pd.read_excel(xls, sheet_name=sheet_name).to_dict(orient="records")
+                combined_data = get_excel_data(file_id)
                 
-                # Convert Excel file to base64
-                with open(combined_output_path, 'rb') as excel_file:
-                    encoded_excel = base64.b64encode(excel_file.read()).decode('utf-8')
-                
-                # Create response in the same format as process_spads
+                # Create response with file reference instead of base64
                 response_data = {
                     'data': combined_data,
-                    'excel_file': {
+                    'file': {
                         'filename': f"Optimized_{file.name}",
-                        'content': encoded_excel,
-                        'content_type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        'url': get_file_url(file_id),
+                        'file_id': file_id
                     }
                 }
                 
@@ -560,8 +550,9 @@ def optimize_all(request):
                         os.remove(sb_output_path)
                     if os.path.exists(sd_output_path):
                         os.remove(sd_output_path)
-                    if os.path.exists(combined_output_path):
-                        os.remove(combined_output_path)
+                    # Do NOT delete combined_output_path as it's needed for download
+                    # if os.path.exists(combined_output_path):
+                    #     os.remove(combined_output_path)
                 except PermissionError:
                     # Log that we couldn't clean up, but don't fail the request
                     print(f"Warning: Unable to remove some temporary files due to permission error")

@@ -18,6 +18,7 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 from .header import final_sb_optimisation
 import base64
+from core.file_service import save_temp_file, get_excel_data, get_file_url
 
 
 class ProcessedFileViewSet(viewsets.ModelViewSet):
@@ -97,24 +98,20 @@ def process_sbads(request):
         
         if not os.path.exists(output_file_path):
             return create_response(request, {"error": "Failed to process the file"}, 500)
+        
+        # Save file to file service and get its ID    
+        file_id = save_temp_file(output_file_path, f"Optimized_SB_{bulk_file.name}")
             
         # Extract data from the output Excel file for JSON response
-        result_data = {}
-        with pd.ExcelFile(output_file_path) as xls:
-            for sheet_name in xls.sheet_names:
-                result_data[sheet_name] = pd.read_excel(xls, sheet_name=sheet_name).to_dict(orient="records")
+        result_data = get_excel_data(file_id)
         
-        # Get base64 encoded Excel file
-        with open(output_file_path, 'rb') as excel_file:
-            encoded_excel = base64.b64encode(excel_file.read()).decode('utf-8')
-        
-        # Create response with both JSON data and Excel file
+        # Create response with JSON data and file reference
         response_data = {
             'data': result_data,
-            'excel_file': {
+            'file': {
                 'filename': f"Optimized_SB_{bulk_file.name}",
-                'content': encoded_excel,
-                'content_type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                'url': get_file_url(file_id, request),
+                'file_id': file_id
             }
         }
         
@@ -123,14 +120,12 @@ def process_sbads(request):
             os.remove(bulk_file_path)
         if os.path.exists(campaign_file_path):
             os.remove(campaign_file_path)
-        if os.path.exists(output_file_path):
-            os.remove(output_file_path)
             
         return create_response(request, response_data)
 
     except Exception as e:
         # Clean up any temporary files
-        for file_path in [bulk_file_path, campaign_file_path, output_file_path]:
+        for file_path in [bulk_file_path, campaign_file_path]:
             if 'file_path' in locals() and os.path.exists(file_path):
                 os.remove(file_path)
                 
