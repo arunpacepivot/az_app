@@ -23,6 +23,13 @@ export function Navbar() {
       ]
     },
     {
+      name: "Catalog",
+      tools: [
+        { name: 'SQP Analysis', href: '/sqp', description: 'Analyze search query performance data' },
+        { name: 'Cerebro Analysis', href: '/cerebro', description: 'Advanced keyword research and analysis' },
+      ]
+    },
+    {
       name: "Bulk File",
       tools: [
         { name: 'Bulk File Optimizer', href: '/sp', description: 'Optimize your Sponsored Products campaigns' },
@@ -32,8 +39,7 @@ export function Navbar() {
       name: "Advertising",
       tools: [
         { name: 'N-gram Analysis', href: '/ngram', description: 'Analyze keyword performance using n-gram techniques' },
-        { name: 'Topical Analysis', href: '/topical', description: 'Analyze topics and trends from your data' },
-        { name: 'Cerebro Analysis', href: '/cerebro', description: 'Advanced keyword research and analysis' },
+        { name: 'Topical Analysis', href: '/topical', description: 'Advanced topic and trend analysis' },
       ]
     },
     // Future categories can be added here

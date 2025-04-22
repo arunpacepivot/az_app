@@ -6,6 +6,7 @@ import { Upload, ArrowDown, Eye } from 'lucide-react';
 import { CerebroResponse, CerebroFile } from '@/lib/api/types';
 import { cerebroService } from '@/lib/api/services/cerebro.service';
 import { getErrorDetails } from '@/lib/utils/error-handler';
+import { getFileDownloadUrl } from '@/lib/api/utils';
 
 import { EnhancedDataTable } from '@/components/ui/enhanced-data-table';
 import { Spinner } from '@/components/shared/Spinner';
@@ -59,16 +60,16 @@ function SuccessBanner({
     <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
       <div className="flex items-center justify-between p-6">
         <div className="flex items-center gap-4">
-          {/* Success Icon */}
-          <div className="rounded-full bg-green-500 bg-opacity-10 p-2 flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          
-          {/* Content */}
+        {/* Success Icon */}
+        <div className="rounded-full bg-green-500 bg-opacity-10 p-2 flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        
+        {/* Content */}
           <div>
-            <h3 className="text-xl font-medium text-green-500">Analysis Complete!</h3>
+          <h3 className="text-xl font-medium text-green-500">Analysis Complete!</h3>
             <p className="text-gray-300 text-sm mt-1">Your keyword analysis has been processed successfully.</p>
           </div>
         </div>
@@ -290,7 +291,7 @@ export function CerebroForm() {
               result.Keyword = item.Keyword;
             } else if ('Keyword Phrase' in item) {
               result.Keyword = item['Keyword Phrase'];
-            } else {
+                  } else {
               result.Keyword = 'Unknown';
             }
             
@@ -480,7 +481,10 @@ export function CerebroForm() {
         return;
       }
       
-      const downloadUrl = cerebroService.downloadCerebroFile(fileData.file_id);
+      // Always use file_id for downloading
+      const downloadUrl = getFileDownloadUrl(fileData.file_id);
+      console.log('Generated download URL with file_id:', downloadUrl);
+      
       window.open(downloadUrl, '_blank');
     } catch (error) {
       console.error('Error downloading file:', error);
@@ -569,7 +573,7 @@ export function CerebroForm() {
         {/* Main form container */}
         <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-800 shadow-xl">
           {/* Form fields */}
-          <div className="p-8 space-y-6"> 
+          <div className="p-8 space-y-6">
             {/* Minimum Search Volume */}
             <div className="space-y-4 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50">
               <h3 className="text-yellow-400 text-lg font-medium">

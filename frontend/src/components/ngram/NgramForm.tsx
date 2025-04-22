@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import { Eye } from 'lucide-react'
@@ -6,6 +5,7 @@ import { useProcessNgram } from '@/lib/hooks/queries/use-ngram'
 import { getErrorDetails } from '@/lib/utils/error-handler'
 import { NgramResponse, NgramFile } from '@/lib/api/types'
 import { ngramService } from '@/lib/api/services/ngram.service'
+import { getFileDownloadUrl } from '@/lib/api/utils'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -275,7 +275,7 @@ export function NgramForm() {
     resetMutation();
   };
 
-  // File download handler - using similar pattern to SP tool
+  // File download handler
   const handleDownloadFile = (file: NgramFile) => {
     try {
       console.log('Downloading file:', file);
@@ -286,16 +286,9 @@ export function NgramForm() {
         return;
       }
       
-      let downloadUrl;
-      
-      // Use direct URL if available
-      if (file.url && (file.url.startsWith('http://') || file.url.startsWith('https://'))) {
-        downloadUrl = file.url;
-      } 
-      // Use service function as fallback
-      else {
-        downloadUrl = ngramService.downloadNgramFile(file.file_id);
-      }
+      // Always use file_id for downloading
+      const downloadUrl = getFileDownloadUrl(file.file_id);
+      console.log('Generated download URL with file_id:', downloadUrl);
       
       // Open in new tab for reliable downloading
       window.open(downloadUrl, '_blank');

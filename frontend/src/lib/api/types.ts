@@ -61,6 +61,31 @@ export interface NgramResponse {
   status: number;
 }
 
+// SQP Analysis types
+export interface SqpPayload {
+  file: File;
+}
+
+export interface SqpFile {
+  filename: string;
+  url?: string;
+  file_id: string;
+}
+
+export interface SqpResponse {
+  data: {
+    data: {
+      'Good CTR & CVR': any[];
+      'CTR Improve': any[];
+      'CVR Improve': any[];
+      'Declining Trend': any[];
+    };
+    keywords?: string[];
+    file: SqpFile;
+  };
+  status: number;
+}
+
 // Topical Analysis types
 export interface TopicalPayload {
   file: File;

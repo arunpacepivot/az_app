@@ -14,6 +14,7 @@ import {
   Row,
   getGroupedRowModel,
   getExpandedRowModel,
+  ColumnResizeMode
 } from '@tanstack/react-table'
 import { rankItem } from '@tanstack/match-sorter-utils'
 
@@ -87,6 +88,7 @@ interface DataTableProps<TData, TValue> {
   enableColumnVisibility?: boolean
   enablePagination?: boolean
   enableGrouping?: boolean
+  enableColumnResizing?: boolean
 }
 
 interface FilterOption {
@@ -120,6 +122,51 @@ const customScrollbarCSS = `
 }
 .scrollbar-custom::-webkit-scrollbar-thumb:hover {
   background: rgba(107, 114, 128, 0.8);
+}
+.scrollbar-custom::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Bottom scrollbar specific styles */
+.table-container {
+  position: relative;
+  overflow-x: auto;
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--border));
+  scrollbar-width: thin;
+  display: block;
+  width: 100%;
+}
+
+/* Custom scrollbar styling specifically for the table container */
+.table-container::-webkit-scrollbar {
+  height: 12px; /* Increased height for better visibility */
+  width: 12px;
+}
+.table-container::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.3);
+  border-radius: 0;
+}
+.table-container::-webkit-scrollbar-thumb {
+  background-color: rgba(107, 114, 128, 0.7);
+  border-radius: 6px;
+  border: 3px solid rgba(31, 41, 55, 0.3);
+  background-clip: padding-box;
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(107, 114, 128, 0.9);
+  border: 3px solid rgba(31, 41, 55, 0.3);
+  background-clip: padding-box;
+}
+.table-container .data-table {
+  min-width: 100%;
+  width: max-content;
+  border: none; /* Remove inner table border */
+}
+/* Remove table border when in container */
+.table-container > table {
+  margin: 0;
+  border: none;
 }
 `;
 
@@ -370,6 +417,7 @@ export function DataTable<TData, TValue>({
   enableColumnVisibility = true,
   enablePagination = true,
   enableGrouping = true,
+  enableColumnResizing = true,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -380,16 +428,74 @@ export function DataTable<TData, TValue>({
   const [expanded, setExpanded] = useState({})
   const [columnFilterTypes, setColumnFilterTypes] = useState<Record<string, string>>({})
   const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null)
+  const [columnResizeMode] = useState<ColumnResizeMode>('onChange')
 
   // Add scrollbar styles to document head
   useEffect(() => {
+    // Remove any existing style elements to avoid duplicates
+    const existingStyle = document.getElementById('data-table-scrollbar-styles');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
     const styleElement = document.createElement('style');
+    styleElement.id = 'data-table-scrollbar-styles';
     styleElement.textContent = customScrollbarCSS;
     document.head.appendChild(styleElement);
     
     return () => {
-      document.head.removeChild(styleElement);
+      if (document.getElementById('data-table-scrollbar-styles')) {
+        document.getElementById('data-table-scrollbar-styles')?.remove();
+      }
     };
+  }, []);
+
+  // Add resizing styles
+  useEffect(() => {
+    if (!document.getElementById('data-table-resize-styles')) {
+      const styleEl = document.createElement('style');
+      styleEl.id = 'data-table-resize-styles';
+      styleEl.textContent = `
+        .resizer {
+          position: absolute;
+          right: 0;
+          top: 0;
+          height: 100%;
+          width: 8px; /* Wider for easier grabbing */
+          background: rgba(0, 0, 0, 0.1);
+          cursor: col-resize;
+          user-select: none;
+          touch-action: none;
+          z-index: 1;
+          opacity: 0;
+          transition: opacity 0.2s, background-color 0.2s;
+        }
+        
+        .resizer:hover {
+          opacity: 1;
+          background: rgba(255, 204, 0, 0.5);
+        }
+        
+        .isResizing {
+          opacity: 1 !important;
+          background: rgba(255, 204, 0, 0.8) !important;
+        }
+        
+        .data-table-cell {
+          position: relative;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        /* Make resizing smoother */
+        .data-table th,
+        .data-table td {
+          transition: width 0.2s ease;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
   }, []);
 
   const table = useReactTable({
@@ -409,6 +515,13 @@ export function DataTable<TData, TValue>({
       grouping,
       expanded,
     },
+    defaultColumn: {
+      minSize: 40,
+      size: 150,
+      maxSize: 500,
+    },
+    enableColumnResizing,
+    columnResizeMode,
     enableSorting,
     enableColumnFilters: enableFiltering,
     enableGlobalFilter: enableFiltering,
@@ -626,6 +739,17 @@ export function DataTable<TData, TValue>({
 
   HeaderWithFilter.displayName = 'HeaderWithFilter';
 
+  // Generate the column size CSS variables for inline styles
+  const columnSizingVars = useMemo(() => {
+    const vars: { [key: string]: string } = {};
+    
+    table.getAllColumns().forEach(column => {
+      vars[`--col-${column.id}-size`] = `${column.getSize()}px`;
+    });
+    
+    return vars;
+  }, [table.getState().columnSizing]);
+
   return (
     <Card className="w-full">
       {(title || description) && (
@@ -663,7 +787,12 @@ export function DataTable<TData, TValue>({
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[200px]" sideOffset={5}>
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-[200px] scrollbar-custom" 
+                  style={{ maxHeight: '300px', overflowY: 'auto' }}
+                  sideOffset={5}
+                >
                   {table.getState().columnFilters.length > 0 ? (
                     <>
                       <div className="px-2 py-1.5 text-sm font-semibold">Active Filters</div>
@@ -730,7 +859,11 @@ export function DataTable<TData, TValue>({
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-[200px] scrollbar-custom" 
+                  style={{ maxHeight: '300px', overflowY: 'auto' }}
+                >
                   {grouping.length > 0 ? (
                     <>
                       <div className="px-2 py-1.5 text-sm font-semibold">Active Grouping</div>
@@ -790,7 +923,11 @@ export function DataTable<TData, TValue>({
                     Columns
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent 
+                  align="end" 
+                  className="scrollbar-custom" 
+                  style={{ maxHeight: '300px', overflowY: 'auto' }}
+                >
                   {table
                     .getAllColumns()
                     .filter((column) => column.getCanHide())
@@ -823,81 +960,95 @@ export function DataTable<TData, TValue>({
             )}
           </div>
         </div>
-        <div className="rounded-md border">
-          <div className="scrollbar-custom overflow-auto">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="px-4 py-3 relative">
+        <div className="table-container">
+          <Table className="data-table" style={columnSizingVars}>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead 
+                      key={header.id} 
+                      className="px-4 py-3 relative"
+                      style={{ width: header.column.getSize() !== 150 ? `${header.column.getSize()}px` : undefined }}
+                    >
+                      <div className="flex items-center justify-between data-table-cell">
                         <HeaderWithFilter 
                           column={header.column}
                           header={header}
                         />
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell 
-                          key={cell.id}
-                          className="p-3"
-                        >
-                          {cell.getIsGrouped() ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                row.toggleExpanded()
-                              }}
-                              className="p-1"
-                            >
-                              {row.getIsExpanded() ? (
-                                <ChevronDown className="h-4 w-4 mr-1" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 mr-1" />
-                              )}
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext()
-                              )}{' '}
-                              ({row.subRows.length})
-                            </Button>
-                          ) : cell.getIsAggregated() ? (
-                            flexRender(
-                              cell.column.columnDef.aggregatedCell ??
-                                cell.column.columnDef.cell,
-                              cell.getContext()
-                            )
-                          ) : cell.getIsPlaceholder() ? null : (
-                            flexRender(
+                        
+                        {enableColumnResizing && header.column.getCanResize() && (
+                          <div 
+                            className={`resizer ${header.column.getIsResizing() ? 'isResizing' : ''}`}
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            title="Resize column"
+                          />
+                        )}
+                      </div>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell 
+                        key={cell.id}
+                        className="p-3 data-table-cell"
+                        style={{ width: cell.column.getSize() !== 150 ? `${cell.column.getSize()}px` : undefined }}
+                      >
+                        {cell.getIsGrouped() ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              row.toggleExpanded()
+                            }}
+                            className="p-1"
+                          >
+                            {row.getIsExpanded() ? (
+                              <ChevronDown className="h-4 w-4 mr-1" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 mr-1" />
+                            )}
+                            {flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext()
-                            )
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                      No results.
-                    </TableCell>
+                            )}{' '}
+                            ({row.subRows.length})
+                          </Button>
+                        ) : cell.getIsAggregated() ? (
+                          flexRender(
+                            cell.column.columnDef.aggregatedCell ??
+                              cell.column.columnDef.cell,
+                            cell.getContext()
+                          )
+                        ) : cell.getIsPlaceholder() ? null : (
+                          flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )
+                        )}
+                      </TableCell>
+                    ))}
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
         {enablePagination && (
           <div className="flex items-center justify-between space-x-2 py-4">
