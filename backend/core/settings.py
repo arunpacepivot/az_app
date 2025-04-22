@@ -267,33 +267,63 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'filename': os.path.join(BASE_DIR, 'logs', 'app.log'),
+            'formatter': 'verbose',
+            'level': 'DEBUG',
+        },
+        'azure_log': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(os.environ.get('TEMP', os.path.join(BASE_DIR, 'logs')), 'azure_app.log'),
             'formatter': 'verbose',
             'level': 'DEBUG',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file', 'azure_log'],
             'level': 'INFO',
             'propagate': True,
         },
         'django.server': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file', 'azure_log'],
             'level': 'INFO',
             'propagate': False,
         },
         'sp': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file', 'azure_log'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'ngram': {
+            'handlers': ['console', 'file', 'azure_log'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'sqp': {
+            'handlers': ['console', 'file', 'azure_log'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['console', 'file', 'azure_log'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'file_service': {
+            'handlers': ['console', 'file', 'azure_log'],
             'level': 'DEBUG',
             'propagate': False,
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console', 'file', 'azure_log'],
         'level': 'DEBUG',
     },
 }
+
+# Ensure log directory exists
+os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
+os.makedirs(os.path.join(os.environ.get('TEMP', os.path.join(BASE_DIR, 'logs'))), exist_ok=True)
 
 # Add this at the end of the file or near the top
 ROOT_URLCONF = 'core.urls'  # Make sure this matches your project structure

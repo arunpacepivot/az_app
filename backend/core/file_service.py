@@ -1,6 +1,7 @@
 import os
 import uuid
 import base64
+import json
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -17,6 +18,7 @@ file_registry = {}
 TEMP_FILE_EXPIRY_HOURS = 24  # Files expire after 24 hours
 FILE_CLEANUP_THRESHOLD = 100  # Clean up when registry exceeds this size
 AZURE_TEMP_PATH = os.environ.get('TEMP', os.path.join(settings.BASE_DIR, 'temp'))
+REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'file_registry.json')
 
 def ensure_temp_dir():
     """Ensure the temp directory exists."""
@@ -27,6 +29,89 @@ def get_temp_path(filename):
     """Get the full path for a temporary file."""
     ensure_temp_dir()
     return os.path.join(AZURE_TEMP_PATH, filename)
+
+def load_registry():
+    """Load file registry from JSON file."""
+    global file_registry
+    ensure_temp_dir()
+    
+    try:
+        if os.path.exists(REGISTRY_FILE):
+            with open(REGISTRY_FILE, 'r') as f:
+                data = json.load(f)
+                
+                # Convert string dates back to datetime objects
+                for file_id, info in data.items():
+                    if 'created_at' in info and isinstance(info['created_at'], str):
+                        info['created_at'] = timezone.datetime.fromisoformat(info['created_at'].replace('Z', '+00:00'))
+                    if 'expires_at' in info and isinstance(info['expires_at'], str):
+                        info['expires_at'] = timezone.datetime.fromisoformat(info['expires_at'].replace('Z', '+00:00'))
+                
+                file_registry = data
+                print(f"Loaded {len(file_registry)} files from registry file")
+    except Exception as e:
+        print(f"Error loading file registry: {e}")
+        file_registry = {}
+        
+    # Scan temp directory for files not in registry
+    try:
+        scan_temp_directory()
+    except Exception as e:
+        print(f"Error scanning temp directory: {e}")
+
+def save_registry():
+    """Save file registry to JSON file."""
+    ensure_temp_dir()
+    
+    try:
+        # Convert datetime objects to ISO format strings for JSON serialization
+        serializable_registry = {}
+        for file_id, info in file_registry.items():
+            serializable_info = info.copy()
+            if 'created_at' in info:
+                serializable_info['created_at'] = info['created_at'].isoformat()
+            if 'expires_at' in info:
+                serializable_info['expires_at'] = info['expires_at'].isoformat()
+            serializable_registry[file_id] = serializable_info
+            
+        with open(REGISTRY_FILE, 'w') as f:
+            json.dump(serializable_registry, f)
+    except Exception as e:
+        print(f"Error saving file registry: {e}")
+
+def scan_temp_directory():
+    """Scan temp directory for files not in registry."""
+    ensure_temp_dir()
+    
+    # Get all files currently registered in the file system
+    registered_paths = {info['path'] for info in file_registry.values()}
+    
+    # Scan the temp directory for files
+    for filename in os.listdir(AZURE_TEMP_PATH):
+        file_path = os.path.join(AZURE_TEMP_PATH, filename)
+        
+        # Skip directories and registry file
+        if os.path.isdir(file_path) or filename == 'file_registry.json':
+            continue
+            
+        # If file isn't in registry, add it
+        if file_path not in registered_paths:
+            # Create a new file ID
+            file_id = uuid.uuid4().hex
+            
+            # Register the file
+            file_registry[file_id] = {
+                'path': file_path,
+                'filename': filename,
+                'created_at': timezone.now(),
+                'access_count': 0,
+                'expires_at': timezone.now() + timedelta(hours=TEMP_FILE_EXPIRY_HOURS)
+            }
+            
+            print(f"Found unregistered file: {filename}, registered as {file_id}")
+
+# Load registry at module import time
+load_registry()
 
 def save_temp_file(file_obj, custom_filename=None):
     """Save a file object to the temp directory and register it."""
@@ -51,6 +136,7 @@ def save_temp_file(file_obj, custom_filename=None):
             'access_count': 0,
             'expires_at': timezone.now() + timedelta(hours=TEMP_FILE_EXPIRY_HOURS)
         }
+        save_registry()
         return file_id
     
     # Save file from request.FILES or similar
@@ -81,6 +167,9 @@ def save_temp_file(file_obj, custom_filename=None):
     # Clean up if registry is getting too large
     cleanup_old_files()
     
+    # Save the updated registry
+    save_registry()
+    
     return file_id
 
 def cleanup_old_files():
@@ -101,6 +190,10 @@ def cleanup_old_files():
         # Remove oldest, least accessed files until under threshold
         for file_id, _ in sorted_files[:len(file_registry) - FILE_CLEANUP_THRESHOLD + 10]:  # +10 for buffer
             delete_file(file_id)
+    
+    # Save the updated registry after cleanup
+    if expired_ids or len(file_registry) > FILE_CLEANUP_THRESHOLD:
+        save_registry()
 
 def delete_file(file_id):
     """Delete a file from the registry and filesystem."""
@@ -113,13 +206,17 @@ def delete_file(file_id):
             print(f"Error deleting file {file_path}: {str(e)}")
         
         del file_registry[file_id]
+        save_registry()
         return True
     return False
 
 def get_file_response(file_id, as_attachment=True):
     """Generate a FileResponse for a registered file."""
     if file_id not in file_registry:
-        return None
+        # Try to reload registry in case it was updated
+        load_registry()
+        if file_id not in file_registry:
+            return None
     
     file_info = file_registry[file_id]
     file_path = file_info['path']
@@ -131,6 +228,7 @@ def get_file_response(file_id, as_attachment=True):
     # Update access stats
     file_info['access_count'] += 1
     file_info['expires_at'] = timezone.now() + timedelta(hours=TEMP_FILE_EXPIRY_HOURS)
+    save_registry()
     
     response = FileResponse(
         open(file_path, 'rb'),

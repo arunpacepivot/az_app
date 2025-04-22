@@ -6,7 +6,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .ngram_processor import process_ngram_file
-from core.file_service import save_temp_file, get_excel_data, get_file_url
+from core.file_service import save_temp_file, get_excel_data, get_file_url, get_temp_path
 
 def create_response(request, data, status=200):
     """Create a consistent response format."""
@@ -34,13 +34,10 @@ def process_ngram(request):
         if not file.name.endswith((".xlsx", ".xls")):
             return create_response(request, {"error": "Invalid file type. Only Excel files are supported."}, 400)
         
-        # Setup file paths
-        temp_file_path = os.path.join('temp', file.name)
-        output_file_path_sk = os.path.join('temp', f"ngram_analysis_results_by_asin_sk_{file.name}")
-        output_file_path_mk = os.path.join('temp', f"ngram_analysis_results_by_asin_mk_{file.name}")
-        
-        # Create temp directory if it doesn't exist
-        os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
+        # Setup file paths using get_temp_path to ensure proper directory structure
+        temp_file_path = get_temp_path(file.name)
+        output_file_path_sk = get_temp_path(f"ngram_analysis_results_by_asin_sk_{file.name}")
+        output_file_path_mk = get_temp_path(f"ngram_analysis_results_by_asin_mk_{file.name}")
         
         # Save uploaded file temporarily
         with open(temp_file_path, 'wb+') as destination:

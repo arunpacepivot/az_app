@@ -6,7 +6,11 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .topical_processor import process_topical_file
-from core.file_service import save_temp_file, get_excel_data, get_file_url
+from core.file_service import save_temp_file, get_excel_data, get_file_url, get_temp_path
+import logging
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 def create_response(request, data, status=200):
     """Create a consistent response format."""
@@ -34,12 +38,13 @@ def process_topical(request):
         if not file.name.endswith((".xlsx", ".xls")):
             return create_response(request, {"error": "Invalid file type. Only Excel files are supported."}, 400)
         
-        # Setup file paths
-        temp_file_path = os.path.join('temp', file.name)
-        output_file_path = os.path.join('temp', f"ASIN_Top_80_Percent_Data_{file.name}")
+        # Setup file paths using get_temp_path to ensure proper directory structure
+        temp_file_path = get_temp_path(file.name)
+        output_file_path = get_temp_path(f"ASIN_Top_80_Percent_Data_{file.name}")
         
-        # Create temp directory if it doesn't exist
-        os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
+        logger.info(f"Processing Topical file: {file.name}")
+        logger.info(f"Temp file path: {temp_file_path}")
+        logger.info(f"Output file path: {output_file_path}")
         
         # Save uploaded file temporarily
         with open(temp_file_path, 'wb+') as destination:
@@ -52,14 +57,18 @@ def process_topical(request):
         # Process the file
         try:
             result = process_topical_file(temp_file_path, output_file_path, target_acos)
+            logger.info(f"Topical processing successful")
         except Exception as e:
+            logger.error(f"Error processing Topical file: {str(e)}")
             return create_response(request, {"error": f"Error processing file: {str(e)}"}, 500)
         
         if not os.path.exists(output_file_path):
+            logger.error(f"Output file not created: {output_file_path}")
             return create_response(request, {"error": "Failed to generate output file"}, 500)
         
         # Save file to file service and get its ID
         file_id = save_temp_file(output_file_path, f"ASIN_Top_80_Percent_Data_{file.name}")
+        logger.info(f"Saved output file with ID: {file_id}")
             
         # Extract data from the output Excel file for JSON response
         result_data = get_excel_data(file_id)
@@ -90,5 +99,6 @@ def process_topical(request):
         for file_path in temp_files:
             if 'file_path' in locals() and os.path.exists(file_path):
                 os.remove(file_path)
-                
+        
+        logger.error(f"Unexpected error in Topical processing: {str(e)}")
         return create_response(request, {"error": f"Unexpected error: {str(e)}"}, 500) 
