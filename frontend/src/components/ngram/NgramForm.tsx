@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { Eye } from 'lucide-react'
 import { useProcessNgram } from '@/lib/hooks/queries/use-ngram'
 import { getErrorDetails } from '@/lib/utils/error-handler'
 import { NgramResponse, NgramFile } from '@/lib/api/types'
@@ -14,13 +15,107 @@ import { ErrorMessage } from '@/components/ui/error-message'
 import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
 import { Spinner } from '@/components/shared/Spinner'
 
+// Reusable component for file download item
+interface FileDownloadItemProps {
+  file: NgramFile;
+  onDownload: (file: NgramFile) => void;
+}
+
+function FileDownloadItem({ file, onDownload }: FileDownloadItemProps) {
+  return (
+    <div className="p-4 bg-gray-700/30 rounded-lg border border-gray-600 flex justify-between items-center">
+      <div className="flex flex-col space-y-1">
+        <span className="text-gray-200 font-medium truncate max-w-xs">{file.filename || `File`}</span>
+        <span className="text-gray-400 text-sm">{file.type || 'Analysis File'}</span>
+      </div>
+      <Button
+        onClick={() => onDownload(file)}
+        className="bg-gray-600 text-white hover:bg-gray-500 focus:ring-gray-400 flex items-center gap-2"
+      >
+        <ArrowDownTrayIcon className="h-5 w-5" />
+        Download
+      </Button>
+    </div>
+  );
+}
+
+// Reusable component for success banner with download options
+interface SuccessBannerProps {
+  sk_asin_count: number;
+  mk_asin_count: number;
+  files: NgramFile[];
+  tableData: Record<string, Array<Record<string, any>>> | null;
+  previewOpen: boolean;
+  setPreviewOpen: (open: boolean) => void;
+  onDownloadFile: (file: NgramFile) => void;
+  onDownloadAll: (files: NgramFile[]) => void;
+}
+
+function SuccessBanner({
+  sk_asin_count,
+  mk_asin_count,
+  files,
+  tableData,
+  previewOpen,
+  setPreviewOpen,
+  onDownloadFile,
+  onDownloadAll
+}: SuccessBannerProps) {
+  const hasMultipleFiles = files && files.length > 1;
+  
+  return (
+    <div className="p-6 bg-green-900/20 rounded-lg border border-green-700/50">
+      <div className="flex items-center justify-between">
+        <h3 className="text-green-400 text-lg font-semibold flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Analysis Complete!
+        </h3>
+        
+        <div className="flex space-x-3">
+          {/* Preview Data Button - Only shown when preview is closed */}
+          {!previewOpen && tableData && Object.keys(tableData).length > 0 && (
+            <Button
+              onClick={() => setPreviewOpen(true)}
+              className="bg-gray-600 text-white hover:bg-gray-500 focus:ring-gray-400 flex items-center gap-2"
+            >
+              <Eye className="h-5 w-5" />
+              Preview Data
+            </Button>
+          )}
+          
+          {/* Single Download Button for Excel */}
+          {files && files.length > 0 && (
+            <Button
+              onClick={() => hasMultipleFiles ? 
+                document.getElementById('download-options')?.classList.toggle('hidden') : 
+                onDownloadFile(files[0])
+              }
+              className="bg-green-600 text-white hover:bg-green-500 focus:ring-green-400 flex items-center gap-2"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              {hasMultipleFiles ? "Download Files" : "Download Excel"}
+            </Button>
+          )}
+        </div>
+      </div>
+      
+      {/* Show counts in a more compact format */}
+      <div className="mt-2 flex flex-wrap gap-4">
+        <span className="text-yellow-400"><strong>B0 ASINs:</strong> {sk_asin_count}</span>
+        <span className="text-yellow-400"><strong>Non-B0 ASINs:</strong> {mk_asin_count}</span>
+      </div>
+    </div>
+  );
+}
+
 export function NgramForm() {
   const [file, setFile] = useState<File | null>(null)
   const [targetACOS, setTargetACOS] = useState<number>(0.2)
   const [progress, setProgress] = useState(0)
   const [processedData, setProcessedData] = useState<NgramResponse | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
-  const [uploadProgress, setUploadProgress] = useState<number>(0)
+  const [previewOpen, setPreviewOpen] = useState<boolean>(true)
 
   const { 
     mutate: processNgram,
@@ -29,108 +124,195 @@ export function NgramForm() {
     reset: resetMutation
   } = useProcessNgram();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!file || targetACOS <= 0) return
+  // FORMAT NGRAM DATA FOR DATA TABLE
+  const formatDataForTable = () => {
+    if (!processedData?.data?.data) {
+      return null;
+    }
 
-    setIsSubmitting(true)
-    setProgress(0)
-    setUploadProgress(0)
-
-    // Declare interval outside try block so it's accessible in catch block
-    let progressInterval: NodeJS.Timeout | undefined;
+    const { data } = processedData.data;
     
-    try {
-      // Show initial upload status
-      setUploadProgress(10);
-      
-      // Simulate upload progress
-      progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev < 90) return prev + 5;
+    // Transform the data structure into the format expected by EnhancedDataTable
+    // Each ASIN becomes a sheet
+    const formattedData: Record<string, Array<Record<string, any>>> = {};
+    
+    // Process each ASIN entry
+    Object.entries(data).forEach(([asin, rows]) => {
+      if (Array.isArray(rows)) {
+        // Replace any NaN or Infinity values with null
+        // Also sanitize field names by replacing dots with underscores
+        const sanitizedRows = rows.map(row => {
+          const sanitizedRow: Record<string, any> = {};
+          Object.entries(row).forEach(([key, value]) => {
+            // Replace dots in keys with underscores to avoid column ID issues
+            const sanitizedKey = key.replace(/\./g, '_');
+            
+            // Handle NaN and Infinity values
+            if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) {
+              sanitizedRow[sanitizedKey] = null;
+            } else {
+              sanitizedRow[sanitizedKey] = value;
+            }
+          });
+          return sanitizedRow;
+        });
+        formattedData[asin] = sanitizedRows;
+      }
+    });
+    
+    return formattedData;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file || targetACOS <= 0) return;
+
+    setProgress(0);
+    
+    // Setup progress simulation with the same pattern as SP tool
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev < 20) return prev + 0.5;
+        if (prev < 40) return prev + 0.3;
+        if (prev < 60) return prev + 0.2;
+        if (prev < 80) return prev + 0.1;
+        if (prev < 90) return prev + 0.05;
           return prev;
         });
-      }, 500);
+    }, 1000);
       
+    try {
       await processNgram(
         { file, target_acos: targetACOS },
         {
-          onSuccess: (response: NgramResponse) => {
-            if (progressInterval) clearInterval(progressInterval);
-            setUploadProgress(100);
-            setIsSubmitting(false);
+          onSuccess: (response) => {
+            clearInterval(progressInterval);
             setProgress(100);
-            setProcessedData(response);
-            console.log('Ngram Analysis Complete:', response);
-          },
-          onError: (error) => {
-            if (progressInterval) clearInterval(progressInterval);
-            setUploadProgress(0);
-            setIsSubmitting(false);
-            setProgress(0);
-            console.error('Ngram Analysis Error:', error);
             
-            // Check if the backend process actually completed successfully despite the error
-            // This can happen with large files when the frontend times out but the backend finishes
-            if (error?.message?.includes('timeout') || error?.message?.includes('network error')) {
-              // Tell the user to refresh or check downloads
-              alert('The file is taking longer than expected to process. The analysis may still be running on the server. Please wait a few minutes and check your notifications or refresh the page to see if results are available.')
+            // Handle the response
+            try {
+              let parsedResponse: NgramResponse;
+              
+              // Handle string response
+              if (typeof response === 'string') {
+                // Clean response by replacing NaN values
+                const cleanedResponse = (response as string)
+                  .replace(/:\s*NaN/g, ': null')
+                  .replace(/:\s*Infinity/g, ': null')
+                  .replace(/:\s*-Infinity/g, ': null');
+                  
+                console.log('Cleaned response string:', cleanedResponse);
+                parsedResponse = JSON.parse(cleanedResponse);
+              } 
+              // Handle object response
+              else {
+                // Create a clean copy by serializing and deserializing
+                const responseString = JSON.stringify(response, (_, value) => {
+                  if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) {
+                    return null;
+                  }
+                  return value;
+                });
+                parsedResponse = JSON.parse(responseString);
+              }
+              
+              console.log('Processed N-gram Analysis response:', parsedResponse);
+              
+              // Additional validation
+              if (!parsedResponse || !parsedResponse.data) {
+                throw new Error('Invalid response format: Missing data property');
+              }
+              
+              // Make sure data.data exists
+              if (!parsedResponse.data.data) {
+                console.warn('Response is missing data.data property. Creating empty object.');
+                parsedResponse.data.data = {};
+              }
+              
+              // Ensure all required properties exist
+              const requiredProps = ['status', 'message', 'sk_asin_count', 'mk_asin_count'];
+              for (const prop of requiredProps) {
+                if (parsedResponse.data[prop as keyof typeof parsedResponse.data] === undefined) {
+                  console.warn(`Response is missing ${prop} property. Setting default value.`);
+                  
+                  // Set default values based on property type
+                  if (prop === 'status') parsedResponse.data.status = 'success';
+                  else if (prop === 'message') parsedResponse.data.message = 'Analysis completed';
+                  else if (prop === 'sk_asin_count') parsedResponse.data.sk_asin_count = 0;
+                  else if (prop === 'mk_asin_count') parsedResponse.data.mk_asin_count = 0;
+                }
+              }
+              
+              // Store the processed data
+              setProcessedData(parsedResponse);
+            } catch (error) {
+              console.error('Error processing response:', error);
+              console.error('Raw response:', response);
+              alert('Failed to process the server response. See console for details.');
             }
           },
+          onError: (error) => {
+            clearInterval(progressInterval);
+            setProgress(0);
+            console.error('Ngram Analysis Error:', error);
+          },
         }
-      )
+      );
     } catch (error) {
-      if (progressInterval) clearInterval(progressInterval);
-      setUploadProgress(0);
-      setIsSubmitting(false);
+      clearInterval(progressInterval);
       setProgress(0);
       console.error('Unexpected error during ngram processing:', error);
     }
-  }
+  };
 
   const handleReset = () => {
-    setFile(null)
-    setTargetACOS(0.2)
-    setProgress(0)
-    setProcessedData(null)
-    resetMutation()
-  }
+    setFile(null);
+    setTargetACOS(0.2);
+    setProgress(0);
+    setProcessedData(null);
+    setPreviewOpen(true);
+    resetMutation();
+  };
 
+  // File download handler - using similar pattern to SP tool
   const handleDownloadFile = (file: NgramFile) => {
     try {
       console.log('Downloading file:', file);
       
+      if (!file.file_id) {
+        console.error('Missing file_id in file object:', file);
+        alert('Error: File ID is missing. Cannot download the file.');
+        return;
+      }
+      
       let downloadUrl;
       
-      // If direct URL is provided in the response, use it as primary option
-      if (file.url && file.url.startsWith('http')) {
-        console.log('Using direct URL from response:', file.url);
+      // Use direct URL if available
+      if (file.url && (file.url.startsWith('http://') || file.url.startsWith('https://'))) {
         downloadUrl = file.url;
-      } else {
-        // Otherwise use the file_id to generate a download URL
-        console.log('Using file_id to generate URL:', file.file_id);
+      } 
+      // Use service function as fallback
+      else {
         downloadUrl = ngramService.downloadNgramFile(file.file_id);
       }
       
-      console.log('Final download URL:', downloadUrl);
-      
-      // Create and trigger download
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = file.filename || `ngram_${file.file_id}.xlsx`;
-      a.target = '_blank'; // Open in new tab as fallback
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(a);
-      }, 100);
+      // Open in new tab for reliable downloading
+      window.open(downloadUrl, '_blank');
     } catch (error) {
-      console.error('Error downloading file:', error, file);
-      alert('There was an error downloading the file. Please check the console for details.');
+      console.error('Error downloading file:', error);
+      alert('There was an error downloading the file. Please try again.');
     }
-  }
+  };
+  
+  // Function to download all files
+  const handleDownloadAll = (files: NgramFile[]) => {
+    // Download each file with a small delay to prevent browser blocking
+    files.forEach((file, index) => {
+      setTimeout(() => {
+        handleDownloadFile(file);
+      }, index * 500);
+    });
+  };
 
   const handleFileChange = (selectedFile: File) => {
     // Max file size: 20MB
@@ -138,12 +320,103 @@ export function NgramForm() {
     
     if (selectedFile.size > MAX_FILE_SIZE) {
       alert('File size exceeds 20MB limit. Please upload a smaller file or split your data into multiple files.');
-      console.log(`File rejected: ${selectedFile.name}, size: ${(selectedFile.size / 1024 / 1024).toFixed(2)}MB (exceeds limit)`);
       return;
     }
     
-    console.log(`File selected: ${selectedFile.name}, size: ${(selectedFile.size / 1024 / 1024).toFixed(2)}MB, type: ${selectedFile.type}`);
     setFile(selectedFile);
+  };
+
+  // RENDER THE RESULTS SECTION
+  const renderResults = () => {
+    if (!processedData || !processedData.data) return null;
+    
+    const tableData = formatDataForTable();
+    const hasMultipleFiles = processedData.data.files && processedData.data.files.length > 1;
+    
+    return (
+      <div className="mt-8 space-y-6">
+        {/* Success Banner using reusable component */}
+        <SuccessBanner
+          sk_asin_count={processedData.data.sk_asin_count}
+          mk_asin_count={processedData.data.mk_asin_count}
+          files={processedData.data.files || []}
+          tableData={tableData}
+          previewOpen={previewOpen}
+          setPreviewOpen={setPreviewOpen}
+          onDownloadFile={handleDownloadFile}
+          onDownloadAll={(files) => handleDownloadAll(files)}
+        />
+
+        {/* Hidden download options that appear when Download Files is clicked */}
+        {hasMultipleFiles && (
+          <div id="download-options" className="hidden p-6 bg-gray-800/40 rounded-lg border border-gray-700/50">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-yellow-400 text-lg font-semibold">Download Analysis Files</h3>
+              <Button
+                onClick={() => handleDownloadAll(processedData.data.files)}
+                className="bg-green-600 text-white hover:bg-green-500 focus:ring-green-400 flex items-center gap-2"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                Download All
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {processedData.data.files.map((file, index) => (
+                <FileDownloadItem 
+                  key={index} 
+                  file={file} 
+                  onDownload={handleDownloadFile} 
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Data Preview Table */}
+        {previewOpen && (
+          <>
+            {tableData && Object.keys(tableData).length > 0 ? (
+              <EnhancedDataTable
+                data={tableData}
+                title="N-gram Analysis Results by ASIN"
+                description="Preview the analyzed keywords and performance data by ASIN"
+              />
+            ) : (
+              <div className="p-6 bg-red-900/20 rounded-lg border border-red-700/50">
+                <h3 className="text-red-400 text-lg font-semibold flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Data Format Error
+                </h3>
+                <p className="text-gray-300 mt-2">
+                  The analysis data could not be displayed in a table. This may be due to a structure incompatible with the table component.
+                  You can still download the analysis files above.
+                </p>
+                <Button
+                  onClick={handleReset}
+                  className="mt-4 bg-red-600 text-white hover:bg-red-500 focus:ring-red-400"
+                >
+                  Reset and Try Again
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Debug View - Commented out as requested */}
+        {/* 
+        <details className="bg-gray-800/40 rounded-lg border border-gray-700/50 p-4">
+          <summary className="text-yellow-400 text-sm font-medium cursor-pointer">Show Raw Data (Debug)</summary>
+          <div className="mt-2 bg-gray-900 p-4 rounded-md overflow-auto max-h-80">
+            <pre className="text-xs text-gray-300 whitespace-pre-wrap">
+              {JSON.stringify(processedData.data.data, null, 2)}
+            </pre>
+          </div>
+        </details>
+        */}
+      </div>
+    );
   };
 
   return (
@@ -161,6 +434,7 @@ export function NgramForm() {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-12">
+              {/* Target ACOS Input */}
               <div className="space-y-8 p-4">
                 <Label htmlFor="targetACOS" className="text-yellow-400">
                   Target ACOS
@@ -217,6 +491,7 @@ export function NgramForm() {
                 </div>
               </div>
 
+              {/* File Upload Section */}
               <div className="space-y-4 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50">
                 <Label htmlFor="file" className="text-yellow-400 text-lg font-medium">
                   Upload Bulk File (Excel)
@@ -227,10 +502,7 @@ export function NgramForm() {
                       <Button 
                         type="button"
                         className="relative bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 transition-all duration-200 w-full flex items-center justify-center"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          document.getElementById('file')?.click()
-                        }}
+                        onClick={() => document.getElementById('file')?.click()}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -257,6 +529,7 @@ export function NgramForm() {
                 </div>
               </div>
 
+              {/* Form Actions */}
               <div className="flex space-x-4 pt-4">
                 <Button
                   type="submit"
@@ -266,12 +539,9 @@ export function NgramForm() {
                   {isProcessing ? (
                     <div className="flex items-center justify-center">
                       <Spinner size="sm" />
-                      <span className="ml-2">
-                        {uploadProgress < 100 ? `Uploading (${uploadProgress}%)` : 'Processing...'}
-                      </span>
+                      <span className="ml-2">Processing...</span>
                     </div>
-                  ) : null}
-                  {isProcessing ? "Processing..." : "Run N-gram Analysis"}
+                  ) : "Run N-gram Analysis"}
                 </Button>
                 <Button
                   type="button"
@@ -284,6 +554,7 @@ export function NgramForm() {
               </div>
             </form>
 
+            {/* Processing Indicator */}
             {isProcessing && (
               <div className="mt-8 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50 space-y-4">
                 <Label className="text-yellow-400 font-medium">Processing Your Excel File...</Label>
@@ -295,62 +566,10 @@ export function NgramForm() {
               </div>
             )}
 
-            {processedData && (
-              <div className="mt-8 space-y-6">
-                <div className="p-6 bg-green-900/20 rounded-lg border border-green-700/50">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-green-400 text-lg font-semibold flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Analysis Complete!
-                    </h3>
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className="flex flex-col space-y-2">
-                      <p className="text-gray-300"><span className="font-medium">Status:</span> {processedData?.status === 200 ? 'Success' : processedData?.data?.status || 'Processing'}</p>
-                      <p className="text-gray-300"><span className="font-medium">Message:</span> {processedData?.data?.message || 'Analyzing data...'}</p>
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <p className="text-yellow-400"><span className="font-medium">B0 ASINs:</span> {processedData?.data?.sk_asin_count || 0}</p>
-                      <p className="text-yellow-400"><span className="font-medium">Non-B0 ASINs:</span> {processedData?.data?.mk_asin_count || 0}</p>
-                    </div>
-                  </div>
-                </div>
+            {/* Results Section */}
+            {processedData && renderResults()}
 
-                {processedData?.data?.files && processedData.data.files.length > 0 && (
-                  <div className="p-6 bg-gray-800/40 rounded-lg border border-gray-700/50">
-                    <h3 className="text-yellow-400 text-lg font-semibold mb-4">Download Analysis Files</h3>
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                      {processedData.data.files.map((file, index) => (
-                        <div key={index} className="p-4 bg-gray-700/30 rounded-lg border border-gray-600 flex justify-between items-center">
-                          <div className="flex flex-col space-y-1">
-                            <span className="text-gray-200 font-medium truncate max-w-xs">{file.filename}</span>
-                            <span className="text-gray-400 text-sm">{file.type}</span>
-                          </div>
-                          <Button
-                            onClick={() => handleDownloadFile(file)}
-                            className="bg-gray-600 text-white hover:bg-gray-500 focus:ring-gray-400 flex items-center gap-2"
-                          >
-                            <ArrowDownTrayIcon className="h-5 w-5" />
-                            Download
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {processedData?.data?.data && Object.keys(processedData.data.data).length > 0 && (
-                  <EnhancedDataTable
-                    data={processedData.data.data}
-                    title="N-gram Analysis Results"
-                    description="Preview the analyzed data organized by ASIN"
-                  />
-                )}
-              </div>
-            )}
-
+            {/* Error Message */}
             {mutationError && (
               <ErrorMessage
                 message={getErrorDetails(mutationError).message}
