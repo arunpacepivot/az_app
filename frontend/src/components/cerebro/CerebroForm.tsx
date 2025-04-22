@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useRef } from 'react';
 import { useProcessCerebro } from '@/lib/hooks/queries/use-cerebro';
 import { Button } from '@/components/ui/button';
