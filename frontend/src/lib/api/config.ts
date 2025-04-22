@@ -12,7 +12,7 @@ console.log(`API base URL: ${API_BASE_URL} (${isDevelopment ? 'development' : 'p
 
 // Default timeout value for consistency across the app
 export const DEFAULT_TIMEOUT = 30000;
-export const LONG_OPERATION_TIMEOUT = 100000; // ~1.7 minutes for longer operations
+export const LONG_OPERATION_TIMEOUT = 300000; // Increased from 100000ms to 300000ms (5 minutes)
 
 // Create axios instance with default config
 export const apiClient: AxiosInstance = axios.create({

@@ -18,6 +18,10 @@ export default function SpPage() {
 function SpAdsForm() {
   const [file, setFile] = useState<File | null>(null)
   const [targetACOS, setTargetACOS] = useState<number>(0)
+  const [useUnifiedAcos, setUseUnifiedAcos] = useState<boolean>(true)
+  const [spTargetACOS, setSpTargetACOS] = useState<number>(0.30)
+  const [sbTargetACOS, setSbTargetACOS] = useState<number>(0.30)
+  const [sdTargetACOS, setSdTargetACOS] = useState<number>(0.30)
   const [progress, setProgress] = useState(0)
   const [processedData, setProcessedData] = useState<SpAdsResponse | null>(null)
   const [previewOpen, setPreviewOpen] = useState(true)
@@ -31,7 +35,9 @@ function SpAdsForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file || targetACOS <= 0) return
+    if (!file) return
+    if (useUnifiedAcos && targetACOS <= 0) return
+    if (!useUnifiedAcos && spTargetACOS <= 0 && sbTargetACOS <= 0 && sdTargetACOS <= 0) return
 
     setProgress(0)
     const progressInterval = setInterval(() => {
@@ -46,8 +52,21 @@ function SpAdsForm() {
     }, 1000)
 
     try {
+      const payload = {
+        file,
+        useUnifiedAcos,
+        ...(useUnifiedAcos 
+          ? { target_acos: targetACOS } 
+          : { 
+              sp_target_acos: spTargetACOS,
+              sb_target_acos: sbTargetACOS,
+              sd_target_acos: sdTargetACOS
+            }
+        )
+      };
+
       await processSpAds(
-        { file, target_acos: targetACOS },
+        payload,
         {
           onSuccess: (response: string | SpAdsResponse) => {
             clearInterval(progressInterval)
@@ -91,6 +110,9 @@ function SpAdsForm() {
   const handleReset = () => {
     setFile(null)
     setTargetACOS(0)
+    setSpTargetACOS(0.30)
+    setSbTargetACOS(0.30)
+    setSdTargetACOS(0.30)
     setProgress(0)
     setProcessedData(null)
     resetMutation()
@@ -104,6 +126,14 @@ function SpAdsForm() {
           setFile={setFile}
           targetACOS={targetACOS}
           setTargetACOS={setTargetACOS}
+          useUnifiedAcos={useUnifiedAcos}
+          setUseUnifiedAcos={setUseUnifiedAcos}
+          spTargetACOS={spTargetACOS}
+          setSpTargetACOS={setSpTargetACOS}
+          sbTargetACOS={sbTargetACOS}
+          setSbTargetACOS={setSbTargetACOS}
+          sdTargetACOS={sdTargetACOS}
+          setSdTargetACOS={setSdTargetACOS}
           isProcessing={isProcessing}
           progress={progress}
           processedData={processedData}

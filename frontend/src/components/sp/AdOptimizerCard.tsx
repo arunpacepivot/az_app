@@ -13,6 +13,14 @@ interface AdOptimizerCardProps {
   setFile: (file: File | null) => void
   targetACOS: number
   setTargetACOS: (acos: number) => void
+  useUnifiedAcos: boolean
+  setUseUnifiedAcos: (value: boolean) => void
+  spTargetACOS: number
+  setSpTargetACOS: (value: number) => void
+  sbTargetACOS: number
+  setSbTargetACOS: (value: number) => void
+  sdTargetACOS: number
+  setSdTargetACOS: (value: number) => void
   isProcessing: boolean
   progress: number
   processedData: SpAdsResponse | null
@@ -29,6 +37,14 @@ export function AdOptimizerCard({
   setFile,
   targetACOS,
   setTargetACOS,
+  useUnifiedAcos,
+  setUseUnifiedAcos,
+  spTargetACOS,
+  setSpTargetACOS,
+  sbTargetACOS,
+  setSbTargetACOS,
+  sdTargetACOS,
+  setSdTargetACOS,
   isProcessing,
   progress,
   processedData,
@@ -54,7 +70,15 @@ export function AdOptimizerCard({
         <form onSubmit={onSubmit} className="space-y-12">
           <TargetAcosInput 
             targetACOS={targetACOS} 
-            setTargetACOS={setTargetACOS} 
+            setTargetACOS={setTargetACOS}
+            useUnifiedAcos={useUnifiedAcos}
+            setUseUnifiedAcos={setUseUnifiedAcos}
+            spTargetACOS={spTargetACOS}
+            setSpTargetACOS={setSpTargetACOS}
+            sbTargetACOS={sbTargetACOS}
+            setSbTargetACOS={setSbTargetACOS}
+            sdTargetACOS={sdTargetACOS}
+            setSdTargetACOS={setSdTargetACOS}
           />
 
           <BulkFileUploader 
@@ -65,7 +89,8 @@ export function AdOptimizerCard({
           <FormActions 
             isProcessing={isProcessing} 
             file={file} 
-            targetACOS={targetACOS} 
+            targetACOS={targetACOS}
+            hasValidAcos={useUnifiedAcos ? targetACOS > 0 : (spTargetACOS > 0 || sbTargetACOS > 0 || sdTargetACOS > 0)}
             onReset={onReset} 
           />
         </form>

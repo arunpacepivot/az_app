@@ -23,9 +23,14 @@ export function Navbar() {
       ]
     },
     {
+      name: "Bulk File",
+      tools: [
+        { name: 'Bulk File Optimizer', href: '/sp', description: 'Optimize your Sponsored Products campaigns' },
+      ]
+    },
+    {
       name: "Advertising",
       tools: [
-        { name: 'SP Ads Optimizer', href: '/sp', description: 'Optimize your Sponsored Products campaigns' },
         { name: 'N-gram Analysis', href: '/ngram', description: 'Analyze keyword performance using n-gram techniques' },
         { name: 'Topical Analysis', href: '/topical', description: 'Analyze topics and trends from your data' },
         { name: 'Cerebro Analysis', href: '/cerebro', description: 'Advanced keyword research and analysis' },
@@ -66,8 +71,8 @@ export function Navbar() {
             {user && (
               <div className="hidden md:block ml-10">
                 <div className="flex items-center space-x-4">
-                  <Link href="/" className={`px-3 py-2 rounded-md text-sm font-medium ${
-                    pathname === '/' 
+                  <Link href="/dashboard" className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/dashboard' 
                       ? 'bg-gray-800 text-white' 
                       : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                   }`}>
@@ -171,8 +176,8 @@ export function Navbar() {
       {user && isToolsOpen && (
         <div className="md:hidden z-50 relative" id="mobile-menu">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link href="/" className={`block px-3 py-2 rounded-md text-base font-medium ${
-              pathname === '/' 
+            <Link href="/dashboard" className={`block px-3 py-2 rounded-md text-base font-medium ${
+              pathname === '/dashboard' 
                 ? 'bg-gray-800 text-white' 
                 : 'text-gray-300 hover:bg-gray-700 hover:text-white'
             }`}>

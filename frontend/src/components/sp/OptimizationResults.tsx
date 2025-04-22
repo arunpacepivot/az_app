@@ -6,8 +6,22 @@ import { Buffer } from 'buffer'
 import { DataTable } from "@/components/ui/data-table"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { getFileDownloadUrl } from '@/lib/api/utils'
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
+
+// Custom CSS for hiding scrollbars while keeping scroll functionality
+const scrollbarHideStyles = `
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+`;
 
 interface OptimizationResultsProps {
   processedData: SpAdsResponse
@@ -92,11 +106,45 @@ export function OptimizationResults({ processedData, previewOpen, setPreviewOpen
     }
   }, [processedData]);
 
-  // Prepare data for the DataTable component
+  // Get all available sheets
+  const availableSheets = useMemo(() => {
+    return Object.keys(processedData?.data || {});
+  }, [processedData]);
+
+  // Set default active tab to the first sheet
   const [activeTab, setActiveTab] = useState<string>(() => {
-    const sheets = Object.keys(processedData?.data || {});
-    return sheets.length > 0 ? sheets[0] : '';
+    return availableSheets.length > 0 ? availableSheets[0] : '';
   });
+
+  // Update activeTab when sheets change
+  useEffect(() => {
+    if (availableSheets.length > 0 && !availableSheets.includes(activeTab)) {
+      setActiveTab(availableSheets[0]);
+    }
+  }, [availableSheets, activeTab]);
+
+  // Get the human-readable name for each sheet
+  const getSheetDisplayName = (sheetKey: string) => {
+    // Handle common sheet names and make them more readable
+    if (sheetKey.includes('SP_')) return 'Sponsored Products';
+    if (sheetKey.includes('SB_')) return 'Sponsored Brands';
+    if (sheetKey.includes('SD_')) return 'Sponsored Display';
+    
+    // Remove underscores and capitalize
+    return sheetKey
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  // Get the count of rows in each sheet
+  const getSheetRowCount = (sheetKey: string) => {
+    if (processedData?.data && processedData.data[sheetKey]) {
+      return processedData.data[sheetKey].length;
+    }
+    return 0;
+  };
 
   // Generate columns for the active tab
   const columns = useMemo(() => {
@@ -122,12 +170,16 @@ export function OptimizationResults({ processedData, previewOpen, setPreviewOpen
 
   // Get current tab data
   const tableData = useMemo(() => {
-    return (processedData?.data && processedData.data[activeTab]) ? 
-      processedData.data[activeTab] : [];
+    if (!processedData?.data || !processedData.data[activeTab]) {
+      return [];
+    }
+    return processedData.data[activeTab];
   }, [activeTab, processedData]);
 
   return (
     <div className="mt-8 space-y-6">
+      <style dangerouslySetInnerHTML={{ __html: scrollbarHideStyles }} />
+      
       <div className="p-6 bg-green-900/20 rounded-lg border border-green-700/50">
         <div className="flex items-center justify-between">
           <h3 className="text-green-400 text-lg font-semibold flex items-center">
@@ -163,7 +215,7 @@ export function OptimizationResults({ processedData, previewOpen, setPreviewOpen
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle className="text-xl font-bold text-yellow-400">
-                  Sponsored Products Optimization Results
+                  Amazon Ads Optimization Results
                 </CardTitle>
                 <CardDescription className="text-gray-300 mt-1">
                   Preview and analyze the optimized data before download
@@ -172,15 +224,38 @@ export function OptimizationResults({ processedData, previewOpen, setPreviewOpen
             </div>
           </CardHeader>
           <CardContent className="p-4">
-            <DataTable
-              columns={columns}
-              data={tableData}
-              enableSorting={true}
-              enableFiltering={true}
-              enableColumnVisibility={true}
-              enablePagination={true}
-              onDownload={handleDownloadFile}
-            />
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="mb-4 w-full overflow-x-auto flex flex-nowrap pb-1 bg-gray-800/60 border border-gray-700/50 rounded-md scrollbar-hide">
+                {availableSheets.map(sheet => (
+                  <TabsTrigger 
+                    key={sheet} 
+                    value={sheet}
+                    className="min-w-max px-4 py-2 whitespace-nowrap text-sm font-medium data-[state=active]:bg-yellow-400 data-[state=active]:text-black flex items-center gap-1.5"
+                  >
+                    {getSheetDisplayName(sheet)}
+                    <span className="inline-flex items-center justify-center bg-gray-700 text-gray-300 text-xs rounded-full px-1.5 py-0.5 min-w-[20px] data-[state=active]:bg-yellow-500 data-[state=active]:text-black">
+                      {getSheetRowCount(sheet)}
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              
+              {availableSheets.map(sheet => (
+                <TabsContent key={sheet} value={sheet} className="mt-2">
+                  {(
+                    <DataTable
+                      columns={sheet === activeTab ? columns : []}
+                      data={sheet === activeTab ? tableData : []}
+                      enableSorting={true}
+                      enableFiltering={true}
+                      enableColumnVisibility={true}
+                      enablePagination={true}
+                      onDownload={handleDownloadFile}
+                    />
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
           </CardContent>
         </Card>
       )}

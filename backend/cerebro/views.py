@@ -67,7 +67,6 @@ def process_cerebro(request):
         # Create response with JSON data and file reference
         response_data = {
             'data': result_data,
-            'keywords': cerebro_kw.tolist(),
             'file': {
                 'filename': f"Cerebro_Analysis_{file.name}",
                 'url': get_file_url(file_id, request),

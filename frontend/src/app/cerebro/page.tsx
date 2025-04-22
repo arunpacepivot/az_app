@@ -1,14 +1,14 @@
+"use client"
 import { CerebroForm } from '@/components/cerebro/CerebroForm';
-import { PageHeader } from '@/components/ui/page-header';
-
+import ProtectedRoute from '@/components/auth/protected-route';
 export default function CerebroPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <PageHeader
-        title="Cerebro Analysis"
-        description="Advanced keyword research and analysis for your products"
-      />
-      <CerebroForm />
-    </div>
+    <ProtectedRoute>
+      <main className="flex-1">
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex flex-col items-center justify-center">
+    <CerebroForm />
+        </div>
+      </main>
+    </ProtectedRoute>
   );
 } 

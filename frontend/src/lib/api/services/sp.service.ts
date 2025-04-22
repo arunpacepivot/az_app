@@ -9,7 +9,26 @@ export const spService = {
   processSpAds: async (payload: SpAdsPayload): Promise<SpAdsResponse> => {
     const formData = new FormData();
     formData.append('file', payload.file);
-    formData.append('target_acos', payload.target_acos.toString());
+    
+    // Handle different modes of ACOS parameters
+    if (payload.useUnifiedAcos && payload.target_acos !== undefined) {
+      formData.append('target_acos', payload.target_acos.toString());
+      // Set all individual ACOSes to the same value for compatibility with the API
+      formData.append('sp_target_acos', payload.target_acos.toString());
+      formData.append('sb_target_acos', payload.target_acos.toString());
+      formData.append('sd_target_acos', payload.target_acos.toString());
+    } else {
+      // Append individual ACOS values if they're defined
+      if (payload.sp_target_acos !== undefined) {
+        formData.append('sp_target_acos', payload.sp_target_acos.toString());
+      }
+      if (payload.sb_target_acos !== undefined) {
+        formData.append('sb_target_acos', payload.sb_target_acos.toString());
+      }
+      if (payload.sd_target_acos !== undefined) {
+        formData.append('sd_target_acos', payload.sd_target_acos.toString());
+      }
+    }
 
     try {
       const response = await apiClient.post('api/v1/optimize/all/', formData, {

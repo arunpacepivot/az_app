@@ -4,15 +4,16 @@ interface FormActionsProps {
   isProcessing: boolean
   file: File | null
   targetACOS: number
+  hasValidAcos: boolean
   onReset: () => void
 }
 
-export function FormActions({ isProcessing, file, targetACOS, onReset }: FormActionsProps) {
+export function FormActions({ isProcessing, file, hasValidAcos, onReset }: FormActionsProps) {
   return (
     <div className="flex space-x-4 pt-4">
       <Button
         type="submit"
-        disabled={isProcessing || !file || !targetACOS}
+        disabled={isProcessing || !file || !hasValidAcos}
         className="w-3/4 bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center transition-all duration-200 transform hover:translate-y-[-2px] shadow-lg"
       >
         {isProcessing ? (

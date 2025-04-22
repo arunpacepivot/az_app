@@ -22,7 +22,11 @@ export interface ListingPayload {
 // SP Ads types
 export interface SpAdsPayload {
   file: File;
-  target_acos: number;
+  useUnifiedAcos: boolean;
+  target_acos?: number; // Used when useUnifiedAcos is true
+  sp_target_acos?: number;
+  sb_target_acos?: number;
+  sd_target_acos?: number;
 }
 
 export interface ProcessedFile {
@@ -101,6 +105,7 @@ export interface CerebroResponse {
     search_volume_avg: number;
     data: Record<string, any[]>;
     file: CerebroFile;
+    keywords?: any[];
   };
   status: number;
 }
