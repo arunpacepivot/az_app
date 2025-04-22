@@ -1,22 +1,19 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { Eye } from 'lucide-react';
 import { useProcessTopical } from '@/lib/hooks/queries/use-topical';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Loader2, Upload, Download, Eye } from 'lucide-react';
 import { TopicalResponse, TopicalFile } from '@/lib/api/types';
 import { topicalService } from '@/lib/api/services/topical.service';
+import { getErrorDetails } from '@/lib/utils/error-handler';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Progress } from "@/components/ui/progress";
-import { FileInput } from "@/components/ui/file-input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { FileInput } from '@/components/ui/file-input';
+import { ErrorMessage } from '@/components/ui/error-message';
 import { EnhancedDataTable } from '@/components/ui/enhanced-data-table';
 import { Spinner } from '@/components/shared/Spinner';
 
@@ -37,7 +34,7 @@ function FileDownloadItem({ file, onDownload }: FileDownloadItemProps) {
         onClick={() => onDownload(file)}
         className="bg-gray-600 text-white hover:bg-gray-500 focus:ring-gray-400 flex items-center gap-2"
       >
-        <Download className="h-5 w-5" />
+        <ArrowDownTrayIcon className="h-5 w-5" />
         Download
       </Button>
     </div>
@@ -91,7 +88,7 @@ function SuccessBanner({
               onClick={onDownload}
               className="bg-green-600 text-white hover:bg-green-500 focus:ring-green-400 flex items-center gap-2"
             >
-              <Download className="h-5 w-5" />
+              <ArrowDownTrayIcon className="h-5 w-5" />
               Download Excel
             </Button>
           )}
@@ -107,16 +104,69 @@ function SuccessBanner({
   );
 }
 
-export function TopicalForm() {
-  const [file, setFile] = useState<File | null>(null);
-  const [minSearchVolume, setMinSearchVolume] = useState<number>(100);
-  const [processedData, setProcessedData] = useState<TopicalResponse | null>(null);
-  const [previewOpen, setPreviewOpen] = useState<boolean>(true);
-  const [progress, setProgress] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const { mutate, isPending: isLoading, isError, error } = useProcessTopical();
+// Minimum Search Volume Input component
+interface MinSearchVolumeInputProps {
+  value: number;
+  onChange: (value: number) => void;
+}
 
+function MinSearchVolumeInput({ value, onChange }: MinSearchVolumeInputProps) {
+  return (
+    <div className="space-y-4 p-4">
+      <Label htmlFor="minSearchVolume" className="text-yellow-400 text-lg font-medium">
+        Minimum Search Volume
+      </Label>
+      <div className="flex flex-col space-y-2">
+        <div className="relative w-1/4">
+          <input
+            id="minSearchVolume"
+            type="number"
+            min="1"
+            step="1"
+            value={value}
+            onChange={(e) => {
+              const newValue = parseInt(e.target.value, 10);
+              if (!isNaN(newValue)) {
+                onChange(Math.max(newValue, 1));
+              }
+            }}
+            className="w-full bg-gray-900 text-white border border-gray-700 focus:ring-1 focus:ring-yellow-400/50 focus:border-yellow-400/50 rounded-md p-2 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-8 text-sm font-medium"
+            placeholder="100"
+          />
+          <div className="absolute right-0 top-0 bottom-0 w-7 flex flex-col border-l border-gray-700/50">
+            <button
+              type="button"
+              onClick={() => onChange(Math.max(value + 10, 1))}
+              className="flex-1 flex items-center justify-center hover:bg-gray-800 text-gray-500 hover:text-yellow-400 transition-all duration-150 rounded-tr-md"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(Math.max(value - 10, 1))}
+              className="flex-1 flex items-center justify-center hover:bg-gray-800 text-gray-500 hover:text-yellow-400 transition-all duration-150 rounded-br-md border-t border-gray-700/50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <p className="text-gray-400 text-sm">Enter the minimum search volume filter for keywords (e.g., 100)</p>
+      </div>
+    </div>
+  );
+}
+
+// Bulk File Uploader component
+interface TopicalFileUploaderProps {
+  file: File | null;
+  setFile: (file: File | null) => void;
+}
+
+function TopicalFileUploader({ file, setFile }: TopicalFileUploaderProps) {
   const handleFileChange = (selectedFile: File) => {
     // Max file size: 20MB
     const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -129,16 +179,119 @@ export function TopicalForm() {
     setFile(selectedFile);
   };
 
-  const handleProcessTopical = () => {
-    if (!file) {
-      alert("Please select a file to upload");
-      return;
-    }
+  return (
+    <div className="space-y-4 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50">
+      <Label htmlFor="file" className="text-yellow-400 text-lg font-medium">
+        Upload Bulk File (Excel)
+      </Label>
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center space-x-4">
+          <div className="relative w-full">
+            <Button 
+              type="button"
+              className="relative bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 transition-all duration-200 w-full flex items-center justify-center"
+              onClick={() => document.getElementById('file')?.click()}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              {file ? "Change File" : "Choose File"}
+            </Button>
+            <FileInput
+              id="file"
+              accept=".xlsx,.xls"
+              onFileSelect={handleFileChange}
+              className="sr-only"
+            />
+          </div>
+        </div>
+        {file && (
+          <div className="flex items-center p-3 bg-gray-800/80 rounded-lg border border-gray-700 text-sm text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="truncate font-medium">{file.name}</span>
+          </div>
+        )}
+        <p className="text-gray-400 text-sm">
+          Upload the Amazon Advertising bulk file that contains your campaigns for topical analysis
+        </p>
+      </div>
+    </div>
+  );
+}
 
-    if (minSearchVolume < 1) {
-      alert("Minimum search volume must be greater than 0");
-      return;
-    }
+// Form action buttons
+interface FormActionsProps {
+  isProcessing: boolean;
+  file: File | null;
+  minSearchVolume: number;
+  onSubmit: (e: React.FormEvent) => void;
+  onReset: () => void;
+}
+
+function FormActions({ isProcessing, file, minSearchVolume, onSubmit, onReset }: FormActionsProps) {
+  return (
+    <div className="flex space-x-4 pt-4">
+      <Button
+        type="submit"
+        disabled={isProcessing || !file || !minSearchVolume}
+        className="w-3/4 bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 flex items-center justify-center transition-all duration-200 transform hover:translate-y-[-2px] shadow-lg"
+      >
+        {isProcessing ? (
+          <div className="flex items-center justify-center">
+            <Spinner size="sm" />
+            <span className="ml-2">Processing...</span>
+          </div>
+        ) : "Run Topical Analysis"}
+      </Button>
+      <Button
+        type="button"
+        onClick={onReset}
+        disabled={isProcessing}
+        className="w-1/4 bg-gray-700 text-white hover:bg-gray-600 transition-all duration-200 border border-gray-600"
+      >
+        Reset
+      </Button>
+    </div>
+  );
+}
+
+// Processing indicator component
+interface ProcessingIndicatorProps {
+  progress: number;
+}
+
+function ProcessingIndicator({ progress }: ProcessingIndicatorProps) {
+  return (
+    <div className="mt-8 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50 space-y-4">
+      <Label className="text-yellow-400 font-medium">Processing Your Excel File...</Label>
+      <Progress value={progress} className="w-full h-2 bg-gray-700" />
+      <p className="text-gray-400 text-sm">
+        This process may take several minutes to complete. Please keep this page open.
+        We are analyzing your campaigns using advanced topical analysis techniques.
+      </p>
+    </div>
+  );
+}
+
+export function TopicalForm() {
+  const [file, setFile] = useState<File | null>(null);
+  const [minSearchVolume, setMinSearchVolume] = useState<number>(100);
+  const [processedData, setProcessedData] = useState<TopicalResponse | null>(null);
+  const [previewOpen, setPreviewOpen] = useState<boolean>(true);
+  const [progress, setProgress] = useState(0);
+  
+  const { 
+    mutate: processTopical, 
+    isPending: isProcessing,
+    error: mutationError,
+    reset: resetMutation 
+  } = useProcessTopical();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file || minSearchVolume < 1) return;
 
     // Reset any previous data
     setProcessedData(null);
@@ -156,40 +309,57 @@ export function TopicalForm() {
       });
     }, 1000);
 
-    mutate(
-      { file, min_search_volume: minSearchVolume },
-      {
-        onSuccess: (data) => {
-          try {
-            clearInterval(progressInterval);
-            setProgress(100);
-            
-            // Handle any data cleaning if needed
-            if (typeof data === 'string') {
-              // Clean response by replacing NaN and Infinity values
-              const cleanedResponse = (data as string)
-                .replace(/:\s*NaN/g, ': null')
-                .replace(/:\s*Infinity/g, ': null')
-                .replace(/:\s*-Infinity/g, ': null');
-                
-              setProcessedData(JSON.parse(cleanedResponse));
-            } else {
-              setProcessedData(data);
+    try {
+      await processTopical(
+        { file, min_search_volume: minSearchVolume },
+        {
+          onSuccess: (data) => {
+            try {
+              clearInterval(progressInterval);
+              setProgress(100);
+              
+              // Handle any data cleaning if needed
+              let parsedData: TopicalResponse;
+              
+              if (typeof data === 'string') {
+                // Clean response by replacing NaN and Infinity values
+                const cleanedResponse = (data as string)
+                  .replace(/:\s*NaN/g, ': null')
+                  .replace(/:\s*Infinity/g, ': null')
+                  .replace(/:\s*-Infinity/g, ': null');
+                  
+                console.log('Cleaned response string:', cleanedResponse);
+                parsedData = JSON.parse(cleanedResponse);
+              } else {
+                // Create a clean copy by serializing and deserializing
+                const responseString = JSON.stringify(data, (_, value) => {
+                  if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) {
+                    return null;
+                  }
+                  return value;
+                });
+                parsedData = JSON.parse(responseString);
+              }
+              
+              console.log('Topical analysis completed successfully:', parsedData);
+              setProcessedData(parsedData);
+            } catch (error) {
+              console.error('Error processing response:', error);
+              alert('Failed to process the server response. See console for details.');
             }
-            console.log('Topical analysis completed successfully:', data);
-          } catch (error) {
-            console.error('Error processing response:', error);
-            alert('Failed to process the server response. See console for details.');
-          }
-        },
-        onError: (error) => {
-          clearInterval(progressInterval);
-          setProgress(0);
-          console.error('Error processing topical analysis:', error);
-          alert(error.message || "Failed to process topical analysis");
-        },
-      }
-    );
+          },
+          onError: (error) => {
+            clearInterval(progressInterval);
+            setProgress(0);
+            console.error('Error processing topical analysis:', error);
+          },
+        }
+      );
+    } catch (error) {
+      clearInterval(progressInterval);
+      setProgress(0);
+      console.error('Unexpected error during topical processing:', error);
+    }
   };
 
   const handleDownload = () => {
@@ -286,205 +456,106 @@ export function TopicalForm() {
     setProcessedData(null);
     setPreviewOpen(true);
     setProgress(0);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    resetMutation();
+  };
+
+  // Render Results Section
+  const renderResults = () => {
+    if (!processedData) return null;
+    
+    return (
+      <div className="mt-8 space-y-6">
+        {/* Success Banner using reusable component */}
+        <SuccessBanner
+          b0_asin_count={processedData.data.b0_asin_count}
+          non_b0_asin_count={processedData.data.non_b0_asin_count}
+          file={processedData.data.file}
+          tableData={tableData}
+          previewOpen={previewOpen}
+          setPreviewOpen={setPreviewOpen}
+          onDownload={handleDownload}
+        />
+        
+        {/* Data Preview Table */}
+        {previewOpen && (
+          <>
+            {hasPreviewData ? (
+              <EnhancedDataTable
+                data={tableData || {}}
+                title="Topical Analysis Results"
+                description="Preview the analyzed topical data"
+              />
+            ) : (
+              <div className="p-6 bg-yellow-900/20 rounded-lg border border-yellow-700/50">
+                <h3 className="text-yellow-400 text-lg font-semibold">No Preview Available</h3>
+                <p className="text-gray-300 mt-2">
+                  The analysis is complete but there is no data to preview. 
+                  Please download the result file for detailed analysis.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="flex-1 bg-[#111827] min-h-screen">
-      <div className="container mx-auto py-8 px-4">
-        <h1 className="text-4xl font-bold text-yellow-400 mb-2">Topical Analysis Tool</h1>
-        <p className="text-gray-300 mb-8">Analyze your Amazon bulk files to discover topical trends and optimize your campaigns</p>
-        
-        <div className="bg-[#131b2c] p-8 rounded-lg border border-gray-700 shadow-xl">
-          <div className="space-y-8">
-            {/* Minimum Search Volume Section */}
-            <div>
-              <h2 className="text-yellow-400 text-xl font-medium mb-4">Minimum Search Volume</h2>
-              <div className="max-w-xs">
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={minSearchVolume}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value, 10);
-                      if (!isNaN(value)) {
-                        setMinSearchVolume(Math.max(value, 1));
-                      }
-                    }}
-                    className="w-full bg-gray-900 text-white border border-gray-700 focus:ring-1 focus:ring-yellow-400/50 focus:border-yellow-400/50 rounded-md p-2 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-8 text-sm font-medium"
-                    placeholder="100"
-                  />
-                  <div className="absolute right-0 top-0 bottom-0 w-7 flex flex-col border-l border-gray-700/50">
-                    <button
-                      type="button"
-                      onClick={() => setMinSearchVolume(prev => Math.max(prev + 10, 1))}
-                      className="flex-1 flex items-center justify-center hover:bg-gray-800 text-gray-500 hover:text-yellow-400 transition-all duration-150 rounded-tr-md"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                        <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMinSearchVolume(prev => Math.max(prev - 10, 1))}
-                      className="flex-1 flex items-center justify-center hover:bg-gray-800 text-gray-500 hover:text-yellow-400 transition-all duration-150 rounded-br-md border-t border-gray-700/50"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <p className="text-gray-400 text-sm mt-2">
-                  Enter the minimum search volume filter for keywords (e.g., 100)
-                </p>
-              </div>
-            </div>
+    <main className="flex-1">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex flex-col items-center justify-center">
+        <Card className="w-full max-w-4xl mt-0 border border-gray-700 shadow-xl bg-gray-900/60 backdrop-blur-sm">
+          <CardHeader className="border-b border-gray-700/50 pb-6">
+            <CardTitle className="text-3xl font-bold text-center text-yellow-400">
+              Topical Analysis Tool
+            </CardTitle>
+            <CardDescription className="text-center text-gray-300 mt-2">
+              Analyze your Amazon bulk files to discover topical trends and optimize your campaigns
+            </CardDescription>
+          </CardHeader>
 
-            {/* File Upload Section */}
-            <div>
-              <h2 className="text-yellow-400 text-xl font-medium mb-4">Upload Bulk File (Excel)</h2>
-              <div className="mb-4">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full bg-yellow-400 text-black hover:bg-yellow-300 focus:ring-yellow-400 transition-all duration-200 flex items-center justify-center py-3 px-4 rounded-md font-medium"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  Choose File
-                </button>
-                <input
-                  id="file"
-                  type="file"
-                  ref={fileInputRef}
-                  className="sr-only"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      handleFileChange(e.target.files[0]);
-                    }
-                  }}
-                />
-              </div>
-              {file && (
-                <div className="flex items-center p-3 bg-gray-800/80 rounded-lg border border-gray-700 text-sm text-white mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="truncate font-medium">{file.name}</span>
-                </div>
-              )}
-              <p className="text-gray-400 text-sm">
-                Upload the Amazon Advertising bulk file that contains your campaigns for topical analysis
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex space-x-4 mt-8">
-              <button
-                onClick={handleProcessTopical}
-                disabled={isLoading || !file || !minSearchVolume}
-                className={`flex-1 py-3 px-4 rounded-md font-medium flex items-center justify-center ${
-                  isLoading || !file || !minSearchVolume
-                    ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                    : "bg-yellow-500 hover:bg-yellow-400 text-gray-900"
-                }`}
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <Spinner size="sm" />
-                    <span className="ml-2">Processing...</span>
-                  </div>
-                ) : "Run Topical Analysis"}
-              </button>
-              <button
-                onClick={handleReset}
-                disabled={isLoading}
-                className={`px-6 py-3 rounded-md font-medium ${
-                  isLoading
-                    ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-700 text-white hover:bg-gray-600"
-                }`}
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-
-          {/* Processing Indicator */}
-          {isLoading && (
-            <div className="mt-8 p-4 bg-gray-800/40 rounded-lg border border-gray-700/50 space-y-4">
-              <Label className="text-yellow-400 font-medium">Processing Your Excel File...</Label>
-              <Progress value={progress} className="w-full h-2 bg-gray-700" />
-              <p className="text-gray-400 text-sm">
-                This process may take several minutes to complete. Please keep this page open.
-                We are analyzing your campaigns using advanced topical analysis techniques.
-              </p>
-            </div>
-          )}
-
-          {/* Results Section */}
-          {processedData && (
-            <div className="mt-8 space-y-6">
-              {/* Success Banner using reusable component */}
-              <SuccessBanner
-                b0_asin_count={processedData.data.b0_asin_count}
-                non_b0_asin_count={processedData.data.non_b0_asin_count}
-                file={processedData.data.file}
-                tableData={tableData}
-                previewOpen={previewOpen}
-                setPreviewOpen={setPreviewOpen}
-                onDownload={handleDownload}
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-12">
+              {/* Minimum Search Volume Input */}
+              <MinSearchVolumeInput 
+                value={minSearchVolume} 
+                onChange={setMinSearchVolume} 
               />
               
-              {/* Data Preview Table */}
-              {previewOpen && (
-                <>
-                  {hasPreviewData ? (
-                    <EnhancedDataTable
-                      data={tableData || {}}
-                      title="Topical Analysis Results"
-                      description="Preview the analyzed topical data"
-                    />
-                  ) : (
-                    <div className="p-6 bg-yellow-900/20 rounded-lg border border-yellow-700/50">
-                      <h3 className="text-yellow-400 text-lg font-semibold">No Preview Available</h3>
-                      <p className="text-gray-300 mt-2">
-                        The analysis is complete but there is no data to preview. 
-                        Please download the result file for detailed analysis.
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+              {/* File Upload Component */}
+              <TopicalFileUploader 
+                file={file} 
+                setFile={setFile} 
+              />
+              
+              {/* Form Actions */}
+              <FormActions
+                isProcessing={isProcessing}
+                file={file}
+                minSearchVolume={minSearchVolume}
+                onSubmit={handleSubmit}
+                onReset={handleReset}
+              />
+            </form>
 
-          {/* Error Message */}
-          {isError && (
-            <div className="mt-8 p-6 bg-red-900/20 rounded-lg border border-red-700/50">
-              <h3 className="text-red-400 text-lg font-semibold flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                Error
-              </h3>
-              <p className="text-gray-300 mt-2">{error?.message || "An error occurred during processing"}</p>
-              <Button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="mt-4 bg-red-600 text-white hover:bg-red-500 focus:ring-red-400"
-              >
-                Reload Page
-              </Button>
-            </div>
-          )}
-        </div>
+            {/* Processing Indicator */}
+            {isProcessing && (
+              <ProcessingIndicator progress={progress} />
+            )}
+
+            {/* Results Section */}
+            {processedData && renderResults()}
+
+            {/* Error Message */}
+            {mutationError && (
+              <ErrorMessage
+                message={getErrorDetails(mutationError).message}
+                onRetry={resetMutation}
+                className="mt-8"
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </main>
   );
 } 

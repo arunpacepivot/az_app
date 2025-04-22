@@ -20,6 +20,12 @@ export const spService = {
       });
       
       console.log('SP Ads API response:', response.data);
+      
+      // Ensure excel_file has file_id if available in the response
+      if (response.data && response.data.excel_file && response.data.file_id) {
+        response.data.excel_file.file_id = response.data.file_id;
+      }
+      
       return response.data;
     } catch (error) {
       console.error('SP Ads API error:', error);
@@ -44,6 +50,13 @@ export const spService = {
    * Download file using file_id (if needed)
    */
   downloadFile: (fileId: string): string => {
-    return getFileDownloadUrl(fileId);
+    if (!fileId) {
+      console.error('Invalid file ID for download:', fileId);
+      throw new Error('Invalid file ID for download');
+    }
+    
+    const url = getFileDownloadUrl(fileId);
+    console.log(`Generating download URL for file ${fileId}: ${url}`);
+    return url;
   }
 }; 

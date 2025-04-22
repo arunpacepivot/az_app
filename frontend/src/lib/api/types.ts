@@ -112,13 +112,24 @@ export interface ApiError {
   details?: unknown;
 }
 
+// Common file interface used across multiple response types
+export interface FileInfo {
+  filename: string;
+  url?: string;
+  file_id: string;
+  content_type?: string;
+}
+
 export interface SpAdsResponse {
   data: {
     [sheetName: string]: SheetRow[];
   };
-  excel_file: {
+  excel_file?: {
     filename: string;
     content: string;
     content_type: string;
+    file_id?: string;
   };
+  file?: FileInfo;
+  file_id?: string;
 } 

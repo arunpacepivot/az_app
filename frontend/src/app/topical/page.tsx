@@ -1,14 +1,16 @@
+"use client"
+
 import { TopicalForm } from '@/components/topical/TopicalForm';
-import { PageHeader } from '@/components/ui/page-header';
+import ProtectedRoute from '@/components/auth/protected-route';
 
 export default function TopicalPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <PageHeader
-        title="Topical Analysis"
-        description="Analyze topics and trends from your data"
-      />
-      <TopicalForm />
-    </div>
+    <ProtectedRoute>
+      <main className="flex-1">
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex flex-col items-center justify-center">
+          <TopicalForm />
+        </div>
+      </main>
+    </ProtectedRoute>
   );
 } 
