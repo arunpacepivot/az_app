@@ -15,9 +15,9 @@ import pandas as pd
 file_registry = {}
 
 # Configuration
-TEMP_FILE_EXPIRY_HOURS = 24  # Files expire after 24 hours
+TEMP_FILE_EXPIRY_HOURS = 4  # Files expire after 4 hours
 FILE_CLEANUP_THRESHOLD = 100  # Clean up when registry exceeds this size
-AZURE_TEMP_PATH = os.environ.get('TEMP', os.path.join(settings.BASE_DIR, 'temp'))
+AZURE_TEMP_PATH = os.path.join(os.environ.get('HOME', ''), 'site', 'wwwroot', 'temp_files')
 REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'file_registry.json')
 
 def ensure_temp_dir():

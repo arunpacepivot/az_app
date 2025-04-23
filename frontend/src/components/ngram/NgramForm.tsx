@@ -24,14 +24,14 @@ interface FileDownloadItemProps {
 
 function FileDownloadItem({ file, onDownload }: FileDownloadItemProps) {
   return (
-    <div className="p-4 bg-gray-700/30 rounded-lg border border-gray-600 flex justify-between items-center">
-      <div className="flex flex-col space-y-1">
-        <span className="text-gray-200 font-medium truncate max-w-xs">{file.filename || `File`}</span>
-        <span className="text-gray-400 text-sm">{file.type || 'Analysis File'}</span>
+    <div className="p-4 bg-gray-700/30 rounded-lg border border-gray-600 flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-200 font-medium truncate">{file.filename || `File`}</p>
+        <p className="text-gray-400 text-sm">{file.type || 'Analysis File'}</p>
       </div>
       <Button
         onClick={() => onDownload(file)}
-        className="bg-gray-600 text-white hover:bg-gray-500 focus:ring-gray-400 flex items-center gap-2"
+        className="bg-gray-600 text-white hover:bg-gray-500 focus:ring-gray-400 flex-shrink-0 flex items-center gap-2 w-full sm:w-auto"
       >
         <ArrowDownTrayIcon className="h-5 w-5" />
         Download
@@ -66,15 +66,15 @@ function SuccessBanner({
   
   return (
     <div className="p-6 bg-green-900/20 rounded-lg border border-green-700/50">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h3 className="text-green-400 text-lg font-semibold flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           Analysis Complete!
         </h3>
         
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
           {/* Preview Data Button - Only shown when preview is closed */}
           {!previewOpen && tableData && Object.keys(tableData).length > 0 && (
             <Button
@@ -344,17 +344,17 @@ export function NgramForm() {
         {/* Hidden download options that appear when Download Files is clicked */}
         {hasMultipleFiles && (
           <div id="download-options" className="hidden p-6 bg-gray-800/40 rounded-lg border border-gray-700/50">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
               <h3 className="text-yellow-400 text-lg font-semibold">Download Analysis Files</h3>
               <Button
                 onClick={() => handleDownloadAll(processedData.data.files)}
-                className="bg-green-600 text-white hover:bg-green-500 focus:ring-green-400 flex items-center gap-2"
+                className="bg-green-600 text-white hover:bg-green-500 focus:ring-green-400 flex items-center gap-2 w-full sm:w-auto"
               >
                 <ArrowDownTrayIcon className="h-5 w-5" />
                 Download All
               </Button>
             </div>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {processedData.data.files.map((file, index) => (
                 <FileDownloadItem 
                   key={index} 
