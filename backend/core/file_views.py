@@ -9,11 +9,12 @@ from .file_service import (
     delete_file,
     get_file_metadata,
     file_registry,
-    load_registry
+    load_registry,
+    get_temp_path
 )
 
 # Set up logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('file_service')
 
 def create_response(data, status=200):
     """Create a consistent response format."""
@@ -39,21 +40,56 @@ def download_file(request, file_id):
     # Check if file exists in registry
     if file_id not in file_registry:
         logger.warning(f"File ID not found in registry: {file_id}")
-        return create_response({"error": "File not found in registry"}, 404)
+        return create_response({"error": "File not found in registry", "file_id": file_id}, 404)
     
     # Get file path and check if file exists on disk
     file_info = file_registry[file_id]
     file_path = file_info['path']
+    filename = file_info['filename']
+    
+    logger.info(f"Looking for file: {filename} at path: {file_path}")
     
     if not os.path.exists(file_path):
         logger.error(f"File exists in registry but not on disk: {file_path}")
-        return create_response({"error": "File exists in registry but not on disk"}, 404)
+        
+        # Try alternative paths
+        alt_path = get_temp_path(filename)
+        logger.info(f"Checking alternative path: {alt_path}")
+        
+        if os.path.exists(alt_path):
+            logger.info(f"Found file at alternative path: {alt_path}")
+            file_info['path'] = alt_path
+            file_path = alt_path
+        else:
+            # Last attempt - scan ALL files in temp directory
+            logger.info("Scanning entire temp directory for the file...")
+            temp_dir = os.path.dirname(file_path)
+            found = False
+            
+            try:
+                for root, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        if file == filename:
+                            found_path = os.path.join(root, file)
+                            logger.info(f"Found file in directory scan: {found_path}")
+                            file_info['path'] = found_path
+                            file_path = found_path
+                            found = True
+                            break
+                    if found:
+                        break
+            except Exception as e:
+                logger.error(f"Error scanning for file: {e}")
+            
+            if not found:
+                return create_response({"error": "File exists in registry but not on disk", "path": file_path}, 404)
     
     logger.info(f"Serving file: {file_info['filename']} (path: {file_path})")
     
     # Get file response
     response = get_file_response(file_id)
     if response:
+        logger.info(f"Successfully generated response for file: {file_id}")
         return response
     else:
         logger.error(f"Failed to generate response for file: {file_id}")

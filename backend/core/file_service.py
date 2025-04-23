@@ -2,6 +2,7 @@ import os
 import uuid
 import base64
 import json
+import logging
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -9,6 +10,9 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.http import HttpResponse, JsonResponse, FileResponse
 import pandas as pd
+
+# Set up logger
+logger = logging.getLogger('file_service')
 
 # Dictionary to track file references
 # Structure: {file_id: {path: str, created_at: datetime, access_count: int, expires_at: datetime}}
@@ -21,10 +25,43 @@ AZURE_TEMP_PATH = os.path.join(os.environ.get('HOME', ''), 'site', 'wwwroot', 't
 REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'file_registry.json')
 
 def ensure_temp_dir():
-    """Ensure the temp directory exists."""
+    """Ensure the temp directory exists and is writable."""
     if not os.path.exists(AZURE_TEMP_PATH):
-        os.makedirs(AZURE_TEMP_PATH, exist_ok=True)
-    
+        try:
+            os.makedirs(AZURE_TEMP_PATH, exist_ok=True)
+            logger.info(f"Created temp directory at {AZURE_TEMP_PATH}")
+            
+            # Set liberal permissions for the temp directory in Azure
+            try:
+                import stat
+                os.chmod(AZURE_TEMP_PATH, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777 permissions
+                logger.info(f"Set permissions on temp directory: {AZURE_TEMP_PATH}")
+            except Exception as e:
+                logger.warning(f"Unable to set permissions on temp directory: {str(e)}")
+                
+            # Verify the directory is writable by creating a test file
+            test_file = os.path.join(AZURE_TEMP_PATH, ".test_write")
+            try:
+                with open(test_file, 'w') as f:
+                    f.write("test")
+                os.remove(test_file)
+                logger.info("Verified temp directory is writable")
+            except Exception as e:
+                logger.error(f"Temp directory is not writable: {str(e)}")
+        except Exception as e:
+            logger.error(f"Failed to create temp directory: {str(e)}")
+            # Fallback to a directory we know should be writable in Azure
+            global AZURE_TEMP_PATH, REGISTRY_FILE
+            fallback_path = os.path.join(os.environ.get('HOME', ''), 'site', 'wwwroot', 'azure_temp')
+            logger.warning(f"Falling back to alternative temp path: {fallback_path}")
+            
+            try:
+                os.makedirs(fallback_path, exist_ok=True)
+                AZURE_TEMP_PATH = fallback_path
+                REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'file_registry.json')
+            except Exception as e2:
+                logger.critical(f"Failed to create fallback temp directory: {str(e2)}")
+
 def get_temp_path(filename):
     """Get the full path for a temporary file."""
     ensure_temp_dir()
@@ -48,16 +85,16 @@ def load_registry():
                         info['expires_at'] = timezone.datetime.fromisoformat(info['expires_at'].replace('Z', '+00:00'))
                 
                 file_registry = data
-                print(f"Loaded {len(file_registry)} files from registry file")
+                logger.info(f"Loaded {len(file_registry)} files from registry file")
     except Exception as e:
-        print(f"Error loading file registry: {e}")
+        logger.error(f"Error loading file registry: {e}")
         file_registry = {}
         
     # Scan temp directory for files not in registry
     try:
         scan_temp_directory()
     except Exception as e:
-        print(f"Error scanning temp directory: {e}")
+        logger.error(f"Error scanning temp directory: {e}")
 
 def save_registry():
     """Save file registry to JSON file."""
@@ -68,16 +105,17 @@ def save_registry():
         serializable_registry = {}
         for file_id, info in file_registry.items():
             serializable_info = info.copy()
-            if 'created_at' in info:
+            if 'created_at' in info and hasattr(info['created_at'], 'isoformat'):
                 serializable_info['created_at'] = info['created_at'].isoformat()
-            if 'expires_at' in info:
+            if 'expires_at' in info and hasattr(info['expires_at'], 'isoformat'):
                 serializable_info['expires_at'] = info['expires_at'].isoformat()
             serializable_registry[file_id] = serializable_info
             
         with open(REGISTRY_FILE, 'w') as f:
             json.dump(serializable_registry, f)
+        logger.debug(f"Registry saved with {len(file_registry)} entries")
     except Exception as e:
-        print(f"Error saving file registry: {e}")
+        logger.error(f"Error saving file registry: {e}")
 
 def scan_temp_directory():
     """Scan temp directory for files not in registry."""
@@ -87,28 +125,34 @@ def scan_temp_directory():
     registered_paths = {info['path'] for info in file_registry.values()}
     
     # Scan the temp directory for files
-    for filename in os.listdir(AZURE_TEMP_PATH):
-        file_path = os.path.join(AZURE_TEMP_PATH, filename)
+    try:
+        all_files = os.listdir(AZURE_TEMP_PATH)
+        logger.debug(f"Found {len(all_files)} files in temp directory")
         
-        # Skip directories and registry file
-        if os.path.isdir(file_path) or filename == 'file_registry.json':
-            continue
+        for filename in all_files:
+            file_path = os.path.join(AZURE_TEMP_PATH, filename)
             
-        # If file isn't in registry, add it
-        if file_path not in registered_paths:
-            # Create a new file ID
-            file_id = uuid.uuid4().hex
-            
-            # Register the file
-            file_registry[file_id] = {
-                'path': file_path,
-                'filename': filename,
-                'created_at': timezone.now(),
-                'access_count': 0,
-                'expires_at': timezone.now() + timedelta(hours=TEMP_FILE_EXPIRY_HOURS)
-            }
-            
-            print(f"Found unregistered file: {filename}, registered as {file_id}")
+            # Skip directories and registry file
+            if os.path.isdir(file_path) or filename == 'file_registry.json':
+                continue
+                
+            # If file isn't in registry, add it
+            if file_path not in registered_paths:
+                # Create a new file ID
+                file_id = uuid.uuid4().hex
+                
+                # Register the file
+                file_registry[file_id] = {
+                    'path': file_path,
+                    'filename': filename,
+                    'created_at': timezone.now(),
+                    'access_count': 0,
+                    'expires_at': timezone.now() + timedelta(hours=TEMP_FILE_EXPIRY_HOURS)
+                }
+                
+                logger.info(f"Found unregistered file: {filename}, registered as {file_id}")
+    except Exception as e:
+        logger.error(f"Error scanning temp directory: {e}")
 
 # Load registry at module import time
 load_registry()
@@ -202,8 +246,11 @@ def delete_file(file_id):
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
+                logger.info(f"Deleted file {file_path}")
+            else:
+                logger.warning(f"File to delete does not exist: {file_path}")
         except (OSError, IOError) as e:
-            print(f"Error deleting file {file_path}: {str(e)}")
+            logger.error(f"Error deleting file {file_path}: {str(e)}")
         
         del file_registry[file_id]
         save_registry()
@@ -212,33 +259,60 @@ def delete_file(file_id):
 
 def get_file_response(file_id, as_attachment=True):
     """Generate a FileResponse for a registered file."""
+    logger.debug(f"Fetching file with ID: {file_id}")
+    logger.debug(f"Current registry entries: {len(file_registry)}")
+    
     if file_id not in file_registry:
-        # Try to reload registry in case it was updated
+        # Try to reload registry
+        logger.warning(f"File ID {file_id} not found in registry, reloading")
         load_registry()
+        
         if file_id not in file_registry:
+            logger.warning(f"File ID {file_id} still not found after reload")
             return None
     
     file_info = file_registry[file_id]
     file_path = file_info['path']
+    logger.debug(f"File path from registry: {file_path}")
     
     if not os.path.exists(file_path):
-        delete_file(file_id)  # Clean up registry entry
-        return None
+        logger.warning(f"File doesn't exist at path: {file_path}")
+        
+        # Check if the filename exists in the temp dir (registry might have wrong path)
+        filename = file_info['filename']
+        potential_path = get_temp_path(filename)
+        if os.path.exists(potential_path):
+            logger.info(f"Found file at alternative path: {potential_path}")
+            # Update registry with correct path
+            file_info['path'] = potential_path
+            file_path = potential_path
+            save_registry()
+        else:
+            logger.error(f"File not found at alternative path either: {potential_path}")
+            delete_file(file_id)  # Clean up registry entry
+            return None
     
     # Update access stats
     file_info['access_count'] += 1
     file_info['expires_at'] = timezone.now() + timedelta(hours=TEMP_FILE_EXPIRY_HOURS)
     save_registry()
     
-    response = FileResponse(
-        open(file_path, 'rb'),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    
-    if as_attachment:
-        response['Content-Disposition'] = f'attachment; filename="{file_info["filename"]}"'
-    
-    return response
+    try:
+        # Open the file with explicit encoding to handle potential issues
+        file_obj = open(file_path, 'rb')
+        response = FileResponse(
+            file_obj,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+        if as_attachment:
+            response['Content-Disposition'] = f'attachment; filename="{file_info["filename"]}"'
+        
+        logger.info(f"Successfully created response for file: {file_id}")
+        return response
+    except Exception as e:
+        logger.error(f"Error creating file response: {str(e)}")
+        return None
 
 def get_file_url(file_id, request=None):
     """Generate a URL for downloading a file."""
