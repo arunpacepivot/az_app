@@ -26,6 +26,8 @@ REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'file_registry.json')
 
 def ensure_temp_dir():
     """Ensure the temp directory exists and is writable."""
+    global AZURE_TEMP_PATH, REGISTRY_FILE
+    
     if not os.path.exists(AZURE_TEMP_PATH):
         try:
             os.makedirs(AZURE_TEMP_PATH, exist_ok=True)
@@ -51,7 +53,6 @@ def ensure_temp_dir():
         except Exception as e:
             logger.error(f"Failed to create temp directory: {str(e)}")
             # Fallback to a directory we know should be writable in Azure
-            global AZURE_TEMP_PATH, REGISTRY_FILE
             fallback_path = os.path.join(os.environ.get('HOME', ''), 'site', 'wwwroot', 'azure_temp')
             logger.warning(f"Falling back to alternative temp path: {fallback_path}")
             
