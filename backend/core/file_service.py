@@ -21,8 +21,14 @@ file_registry = {}
 # Configuration
 TEMP_FILE_EXPIRY_HOURS = 4  # Files expire after 4 hours
 FILE_CLEANUP_THRESHOLD = 100  # Clean up when registry exceeds this size
-AZURE_TEMP_PATH = os.path.join(os.environ.get('HOME', ''), 'site', 'wwwroot', 'temp_files')
+AZURE_TEMP_PATH = '/home/site/wwwroot/temp_files'  # Use absolute path for consistency
 REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'file_registry.json')
+
+def normalize_azure_path(path):
+    """Convert between /root/ and /home/ paths in Azure."""
+    if path and isinstance(path, str) and path.startswith('/root/'):
+        return path.replace('/root/', '/home/', 1)
+    return path
 
 def ensure_temp_dir():
     """Ensure the temp directory exists and is writable."""
@@ -53,7 +59,7 @@ def ensure_temp_dir():
         except Exception as e:
             logger.error(f"Failed to create temp directory: {str(e)}")
             # Fallback to a directory we know should be writable in Azure
-            fallback_path = os.path.join(os.environ.get('HOME', ''), 'site', 'wwwroot', 'azure_temp')
+            fallback_path = '/home/site/wwwroot/azure_temp'
             logger.warning(f"Falling back to alternative temp path: {fallback_path}")
             
             try:
@@ -84,9 +90,17 @@ def load_registry():
                         info['created_at'] = timezone.datetime.fromisoformat(info['created_at'].replace('Z', '+00:00'))
                     if 'expires_at' in info and isinstance(info['expires_at'], str):
                         info['expires_at'] = timezone.datetime.fromisoformat(info['expires_at'].replace('Z', '+00:00'))
+                    
+                    # Normalize paths for Azure
+                    if 'path' in info and isinstance(info['path'], str):
+                        info['path'] = normalize_azure_path(info['path'])
                 
                 file_registry = data
                 logger.info(f"Loaded {len(file_registry)} files from registry file")
+                
+                # Log registry entries for debugging
+                for fid, info in file_registry.items():
+                    logger.debug(f"Registry entry: {fid} -> {info['filename']} at {info['path']}")
     except Exception as e:
         logger.error(f"Error loading file registry: {e}")
         file_registry = {}
@@ -102,6 +116,11 @@ def save_registry():
     ensure_temp_dir()
     
     try:
+        # Normalize paths before serializing
+        for file_id, info in file_registry.items():
+            if 'path' in info and isinstance(info['path'], str):
+                info['path'] = normalize_azure_path(info['path'])
+        
         # Convert datetime objects to ISO format strings for JSON serialization
         serializable_registry = {}
         for file_id, info in file_registry.items():
@@ -123,7 +142,18 @@ def scan_temp_directory():
     ensure_temp_dir()
     
     # Get all files currently registered in the file system
-    registered_paths = {info['path'] for info in file_registry.values()}
+    registered_paths = set()
+    for info in file_registry.values():
+        if 'path' in info:
+            # Add both home and root versions of the path for comparison
+            path = info['path']
+            registered_paths.add(path)
+            if path.startswith('/home/'):
+                registered_paths.add(path.replace('/home/', '/root/', 1))
+            elif path.startswith('/root/'):
+                registered_paths.add(path.replace('/root/', '/home/', 1))
+    
+    logger.debug(f"Registered paths: {len(registered_paths)}")
     
     # Scan the temp directory for files
     try:
@@ -152,6 +182,9 @@ def scan_temp_directory():
                 }
                 
                 logger.info(f"Found unregistered file: {filename}, registered as {file_id}")
+                
+        # If we found new files, save the registry
+        save_registry()
     except Exception as e:
         logger.error(f"Error scanning temp directory: {e}")
 
@@ -273,11 +306,15 @@ def get_file_response(file_id, as_attachment=True):
             return None
     
     file_info = file_registry[file_id]
-    file_path = file_info['path']
-    logger.debug(f"File path from registry: {file_path}")
+    
+    # Normalize path for Azure
+    file_path = normalize_azure_path(file_info['path'])
+    file_info['path'] = file_path  # Update registry entry with normalized path
+    
+    logger.debug(f"File path from registry (normalized): {file_path}")
     
     if not os.path.exists(file_path):
-        logger.warning(f"File doesn't exist at path: {file_path}")
+        logger.warning(f"File doesn't exist at normalized path: {file_path}")
         
         # Check if the filename exists in the temp dir (registry might have wrong path)
         filename = file_info['filename']
