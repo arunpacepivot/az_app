@@ -1,31 +1,24 @@
 #!/bin/bash
-# Try to navigate to the expected directory or fall back to script location
-if [ -d "/home/site/wwwroot/backend" ]; then
-    cd /home/site/wwwroot/backend
-else
-    cd "$(dirname "$0")" || echo "Warning: Could not change to script directory"
-fi
+cd /home/site/wwwroot/backend
 
-# Wait for PostgreSQL to be ready (could add more robust check if needed)
+# Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL..."
 sleep 3
 
 echo "Creating migrations if needed..."
-# Try to run makemigrations safely
-python manage.py makemigrations --check || python manage.py makemigrations core
+python manage.py makemigrations
 
-# Continue even if migrations creation has issues
 if [ $? -ne 0 ]; then
-    echo "Warning: Failed to create migrations, continuing anyway"
+    echo "Error: Failed to create migrations"
+    exit 1
 fi
 
 echo "Running migrations..."
-# Use fake-initial which helps when tables exist but migrations history doesn't
-python manage.py migrate --fake-initial || python manage.py migrate
+python manage.py migrate
 
-# Continue even if there are migration issues
 if [ $? -ne 0 ]; then
-    echo "Warning: Some migrations may not have applied correctly"
+    echo "Error: Failed to apply migrations"
+    exit 1
 fi
 
 echo "Starting Gunicorn..."
