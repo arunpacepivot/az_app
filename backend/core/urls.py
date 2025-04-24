@@ -71,5 +71,6 @@ urlpatterns = [
     path('api/v1/', include((api_v1_patterns, 'v1'), namespace='v1')),
     path('', api_root),
     path('get_csrf/', get_csrf, name='get_csrf'),  # Add the CSRF view directly here
+    path('api/v1/files/download/<str:file_id>/', download_file, name='file_download'),
 ]
            
