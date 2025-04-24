@@ -11,6 +11,13 @@ from django.utils import timezone
 from django.http import HttpResponse, JsonResponse, FileResponse
 import pandas as pd
 
+# Import Azure Blob Storage service
+try:
+    from .azure_blob_service import upload_blob, get_blob_sas_url, delete_blob, cleanup_expired_blobs
+    AZURE_BLOB_AVAILABLE = True
+except ImportError:
+    AZURE_BLOB_AVAILABLE = False
+
 # Set up logger
 logger = logging.getLogger('file_service')
 
@@ -18,11 +25,20 @@ logger = logging.getLogger('file_service')
 # Structure: {file_id: {path: str, created_at: datetime, access_count: int, expires_at: datetime}}
 file_registry = {}
 
+# Additional dictionary to track Azure blobs
+# Structure: {file_id: {blob_name: str, blob_url: str, created_at: datetime, expires_at: datetime}}
+azure_blob_registry = {}
+
 # Configuration
 TEMP_FILE_EXPIRY_HOURS = 4  # Files expire after 4 hours
 FILE_CLEANUP_THRESHOLD = 100  # Clean up when registry exceeds this size
 AZURE_TEMP_PATH = '/home/site/wwwroot/temp_files'  # Use absolute path for consistency
 REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'file_registry.json')
+AZURE_REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'azure_blob_registry.json')
+
+# Check if Azure Blob Storage should be used
+USE_AZURE_STORAGE = getattr(settings, 'AZURE_STORAGE_CONNECTION_STRING', None) and AZURE_BLOB_AVAILABLE
+logger.info(f"Using Azure Blob Storage: {USE_AZURE_STORAGE}")
 
 def normalize_azure_path(path):
     """Convert between /root/ and /home/ paths in Azure."""
@@ -32,7 +48,7 @@ def normalize_azure_path(path):
 
 def ensure_temp_dir():
     """Ensure the temp directory exists and is writable."""
-    global AZURE_TEMP_PATH, REGISTRY_FILE
+    global AZURE_TEMP_PATH, REGISTRY_FILE, AZURE_REGISTRY_FILE
     
     if not os.path.exists(AZURE_TEMP_PATH):
         try:
@@ -66,6 +82,7 @@ def ensure_temp_dir():
                 os.makedirs(fallback_path, exist_ok=True)
                 AZURE_TEMP_PATH = fallback_path
                 REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'file_registry.json')
+                AZURE_REGISTRY_FILE = os.path.join(AZURE_TEMP_PATH, 'azure_blob_registry.json')
             except Exception as e2:
                 logger.critical(f"Failed to create fallback temp directory: {str(e2)}")
 
@@ -76,9 +93,10 @@ def get_temp_path(filename):
 
 def load_registry():
     """Load file registry from JSON file."""
-    global file_registry
+    global file_registry, azure_blob_registry
     ensure_temp_dir()
     
+    # Load local file registry
     try:
         if os.path.exists(REGISTRY_FILE):
             with open(REGISTRY_FILE, 'r') as f:
@@ -97,13 +115,29 @@ def load_registry():
                 
                 file_registry = data
                 logger.info(f"Loaded {len(file_registry)} files from registry file")
-                
-                # Log registry entries for debugging
-                for fid, info in file_registry.items():
-                    logger.debug(f"Registry entry: {fid} -> {info['filename']} at {info['path']}")
     except Exception as e:
         logger.error(f"Error loading file registry: {e}")
         file_registry = {}
+    
+    # Load Azure blob registry
+    if USE_AZURE_STORAGE:
+        try:
+            if os.path.exists(AZURE_REGISTRY_FILE):
+                with open(AZURE_REGISTRY_FILE, 'r') as f:
+                    data = json.load(f)
+                    
+                    # Convert string dates back to datetime objects
+                    for file_id, info in data.items():
+                        if 'created_at' in info and isinstance(info['created_at'], str):
+                            info['created_at'] = timezone.datetime.fromisoformat(info['created_at'].replace('Z', '+00:00'))
+                        if 'expires_at' in info and isinstance(info['expires_at'], str):
+                            info['expires_at'] = timezone.datetime.fromisoformat(info['expires_at'].replace('Z', '+00:00'))
+                    
+                    azure_blob_registry = data
+                    logger.info(f"Loaded {len(azure_blob_registry)} Azure blobs from registry file")
+        except Exception as e:
+            logger.error(f"Error loading Azure blob registry: {e}")
+            azure_blob_registry = {}
         
     # Scan temp directory for files not in registry
     try:
@@ -115,6 +149,7 @@ def save_registry():
     """Save file registry to JSON file."""
     ensure_temp_dir()
     
+    # Save local file registry
     try:
         # Normalize paths before serializing
         for file_id, info in file_registry.items():
@@ -136,6 +171,25 @@ def save_registry():
         logger.debug(f"Registry saved with {len(file_registry)} entries")
     except Exception as e:
         logger.error(f"Error saving file registry: {e}")
+    
+    # Save Azure blob registry
+    if USE_AZURE_STORAGE:
+        try:
+            # Convert datetime objects to ISO format strings for JSON serialization
+            serializable_registry = {}
+            for file_id, info in azure_blob_registry.items():
+                serializable_info = info.copy()
+                if 'created_at' in info and hasattr(info['created_at'], 'isoformat'):
+                    serializable_info['created_at'] = info['created_at'].isoformat()
+                if 'expires_at' in info and hasattr(info['expires_at'], 'isoformat'):
+                    serializable_info['expires_at'] = info['expires_at'].isoformat()
+                serializable_registry[file_id] = serializable_info
+                
+            with open(AZURE_REGISTRY_FILE, 'w') as f:
+                json.dump(serializable_registry, f)
+            logger.debug(f"Azure blob registry saved with {len(azure_blob_registry)} entries")
+        except Exception as e:
+            logger.error(f"Error saving Azure blob registry: {e}")
 
 def scan_temp_directory():
     """Scan temp directory for files not in registry."""
@@ -192,7 +246,58 @@ def scan_temp_directory():
 load_registry()
 
 def save_temp_file(file_obj, custom_filename=None):
-    """Save a file object to the temp directory and register it."""
+    """
+    Save a file either to local temp dir or Azure Blob Storage.
+    
+    Args:
+        file_obj: A file object, file path, or Django UploadedFile
+        custom_filename: Optional custom filename
+        
+    Returns:
+        str: file_id for retrieving the file later
+    """
+    # If Azure Blob Storage is available and configured, use it
+    if USE_AZURE_STORAGE:
+        try:
+            # Upload to Azure Blob Storage
+            blob_name, blob_url = upload_blob(file_obj, custom_filename)
+            
+            # Generate a file ID
+            file_id = uuid.uuid4().hex
+            
+            # Get filename
+            if custom_filename:
+                filename = custom_filename
+            elif hasattr(file_obj, 'name'):
+                filename = os.path.basename(file_obj.name)
+            elif isinstance(file_obj, str) and os.path.exists(file_obj):
+                filename = os.path.basename(file_obj)
+            else:
+                filename = blob_name
+            
+            # Get expiry time (4 hours from now)
+            expires_at = timezone.now() + timedelta(hours=settings.AZURE_BLOB_EXPIRY_HOURS)
+            
+            # Register the blob
+            azure_blob_registry[file_id] = {
+                'blob_name': blob_name,
+                'blob_url': blob_url,
+                'filename': filename,
+                'created_at': timezone.now(),
+                'expires_at': expires_at
+            }
+            
+            # Save the registry
+            save_registry()
+            
+            logger.info(f"File saved to Azure Blob Storage with ID: {file_id}")
+            return file_id
+            
+        except Exception as e:
+            logger.error(f"Error saving to Azure Blob Storage, falling back to local storage: {str(e)}")
+            # Fall back to local file storage
+    
+    # Original local file storage logic if Azure fails or is not available
     ensure_temp_dir()
     
     # Generate a unique filename if none provided
@@ -254,6 +359,7 @@ def cleanup_old_files():
     """Clean up expired or least accessed files if registry is too large."""
     now = timezone.now()
     
+    # Handle local file cleanups
     # Remove expired files
     expired_ids = [fid for fid, info in file_registry.items() if info['expires_at'] < now]
     for file_id in expired_ids:
@@ -269,12 +375,48 @@ def cleanup_old_files():
         for file_id, _ in sorted_files[:len(file_registry) - FILE_CLEANUP_THRESHOLD + 10]:  # +10 for buffer
             delete_file(file_id)
     
-    # Save the updated registry after cleanup
-    if expired_ids or len(file_registry) > FILE_CLEANUP_THRESHOLD:
+    # Handle Azure blob cleanups if enabled
+    if USE_AZURE_STORAGE:
+        # Clean up expired blobs in our registry
+        expired_blob_ids = [fid for fid, info in azure_blob_registry.items() if info['expires_at'] < now]
+        for file_id in expired_blob_ids:
+            if file_id in azure_blob_registry:
+                try:
+                    # Try to delete from Azure
+                    blob_name = azure_blob_registry[file_id]['blob_name']
+                    delete_blob(blob_name)
+                except Exception as e:
+                    logger.error(f"Error deleting expired Azure blob: {str(e)}")
+                # Remove from registry regardless
+                del azure_blob_registry[file_id]
+        
+        # Run Azure blob cleanup function to delete any orphaned blobs
+        try:
+            cleanup_expired_blobs()
+        except Exception as e:
+            logger.error(f"Error cleaning up expired Azure blobs: {str(e)}")
+    
+    # Save the updated registry
+    if expired_ids or len(file_registry) > FILE_CLEANUP_THRESHOLD or (USE_AZURE_STORAGE and expired_blob_ids):
         save_registry()
 
 def delete_file(file_id):
     """Delete a file from the registry and filesystem."""
+    # Check if it's an Azure blob
+    if USE_AZURE_STORAGE and file_id in azure_blob_registry:
+        try:
+            # Delete from Azure
+            blob_name = azure_blob_registry[file_id]['blob_name']
+            delete_blob(blob_name)
+            # Remove from registry
+            del azure_blob_registry[file_id]
+            save_registry()
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting Azure blob: {str(e)}")
+            # Continue to check local files in case of fallback
+    
+    # Check local file
     if file_id in file_registry:
         file_path = file_registry[file_id]['path']
         try:
@@ -289,12 +431,50 @@ def delete_file(file_id):
         del file_registry[file_id]
         save_registry()
         return True
+    
     return False
 
 def get_file_response(file_id, as_attachment=True):
     """Generate a FileResponse for a registered file."""
     logger.debug(f"Fetching file with ID: {file_id}")
-    logger.debug(f"Current registry entries: {len(file_registry)}")
+    
+    # Check if it's an Azure blob
+    if USE_AZURE_STORAGE and file_id in azure_blob_registry:
+        # For Azure blobs, we'll redirect to the blob URL
+        try:
+            blob_info = azure_blob_registry[file_id]
+            # Check if URL is still valid or needs refresh
+            if 'expires_at' in blob_info and blob_info['expires_at'] < timezone.now():
+                # URL is expired, refresh it
+                try:
+                    blob_url = get_blob_sas_url(blob_info['blob_name'])
+                    blob_info['blob_url'] = blob_url
+                    blob_info['expires_at'] = timezone.now() + timedelta(hours=settings.AZURE_BLOB_EXPIRY_HOURS)
+                    save_registry()
+                except Exception as e:
+                    logger.error(f"Error refreshing Azure blob URL: {str(e)}")
+                    # Try to fall back to local file if it exists
+                    if file_id in file_registry:
+                        return get_file_response_local(file_id, as_attachment)
+                    return None
+            
+            # Return redirect response to the blob URL
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(blob_info['blob_url'])
+        
+        except Exception as e:
+            logger.error(f"Error creating response for Azure blob: {str(e)}")
+            # Try to fall back to local file if it exists
+            if file_id in file_registry:
+                return get_file_response_local(file_id, as_attachment)
+            return None
+    
+    # If not Azure or fallback, use local file response
+    return get_file_response_local(file_id, as_attachment)
+
+def get_file_response_local(file_id, as_attachment=True):
+    """Generate a FileResponse for a local file (original implementation)."""
+    logger.debug(f"Fetching local file with ID: {file_id}")
     
     if file_id not in file_registry:
         # Try to reload registry
@@ -354,6 +534,27 @@ def get_file_response(file_id, as_attachment=True):
 
 def get_file_url(file_id, request=None):
     """Generate a URL for downloading a file."""
+    # Check if it's an Azure blob
+    if USE_AZURE_STORAGE and file_id in azure_blob_registry:
+        # For Azure blobs, we can return the direct blob URL
+        blob_info = azure_blob_registry[file_id]
+        
+        # Check if URL is still valid or needs refresh
+        if 'expires_at' in blob_info and blob_info['expires_at'] < timezone.now():
+            # URL is expired, refresh it
+            try:
+                blob_url = get_blob_sas_url(blob_info['blob_name'])
+                blob_info['blob_url'] = blob_url
+                blob_info['expires_at'] = timezone.now() + timedelta(hours=settings.AZURE_BLOB_EXPIRY_HOURS)
+                save_registry()
+                return blob_url
+            except Exception as e:
+                logger.error(f"Error refreshing Azure blob URL: {str(e)}")
+                # Fall back to API URL
+        
+        return blob_info['blob_url']
+    
+    # Fall back to original implementation for local files
     if file_id not in file_registry:
         return None
     
@@ -367,6 +568,17 @@ def get_file_url(file_id, request=None):
 
 def get_file_metadata(file_id):
     """Get metadata for a file."""
+    # Check if it's an Azure blob
+    if USE_AZURE_STORAGE and file_id in azure_blob_registry:
+        info = azure_blob_registry[file_id]
+        return {
+            'filename': info['filename'],
+            'created_at': info['created_at'].isoformat(),
+            'expires_at': info['expires_at'].isoformat(),
+            'storage_type': 'azure_blob'
+        }
+    
+    # Fall back to original implementation for local files
     if file_id not in file_registry:
         return None
     
@@ -375,11 +587,57 @@ def get_file_metadata(file_id):
         'filename': info['filename'],
         'created_at': info['created_at'].isoformat(),
         'expires_at': info['expires_at'].isoformat(),
-        'access_count': info['access_count']
+        'access_count': info['access_count'],
+        'storage_type': 'local'
     }
 
 def get_excel_data(file_id, sheet_name=None):
     """Get data from an Excel file as a dict."""
+    # For Azure blobs, we need to download the file first
+    if USE_AZURE_STORAGE and file_id in azure_blob_registry:
+        try:
+            info = azure_blob_registry[file_id]
+            blob_url = info['blob_url']
+            
+            # Download the file to a temporary location
+            import requests
+            import tempfile
+            
+            # Create a temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+            try:
+                # Download the file
+                response = requests.get(blob_url)
+                response.raise_for_status()
+                
+                # Write to temp file
+                with open(temp_file.name, 'wb') as f:
+                    f.write(response.content)
+                
+                # Read the Excel file
+                with pd.ExcelFile(temp_file.name) as xls:
+                    # If sheet_name is None, read all sheets
+                    if sheet_name is None:
+                        result = {}
+                        for s in xls.sheet_names:
+                            result[s] = pd.read_excel(xls, sheet_name=s).to_dict(orient="records")
+                        return result
+                    else:
+                        # Read specific sheet
+                        return pd.read_excel(xls, sheet_name=sheet_name).to_dict(orient="records")
+            finally:
+                # Clean up temp file
+                if os.path.exists(temp_file.name):
+                    os.unlink(temp_file.name)
+        except Exception as e:
+            logger.error(f"Error reading Excel file from Azure blob: {str(e)}")
+            # Try to fall back to local file if it exists
+            if file_id in file_registry:
+                pass  # Continue to local file logic
+            else:
+                return None
+    
+    # Original implementation for local files
     if file_id not in file_registry:
         return None
     
@@ -401,11 +659,33 @@ def get_excel_data(file_id, sheet_name=None):
                 # Read specific sheet
                 return pd.read_excel(xls, sheet_name=sheet_name).to_dict(orient="records")
     except Exception as e:
-        print(f"Error reading Excel file: {str(e)}")
+        logger.error(f"Error reading Excel file: {str(e)}")
         return None
 
 def get_file_content_base64(file_id):
     """Get file content as base64 encoded string."""
+    # For Azure blobs, we need to download the file first
+    if USE_AZURE_STORAGE and file_id in azure_blob_registry:
+        try:
+            info = azure_blob_registry[file_id]
+            blob_url = info['blob_url']
+            
+            # Download the file
+            import requests
+            response = requests.get(blob_url)
+            response.raise_for_status()
+            
+            # Return base64 encoded content
+            return base64.b64encode(response.content).decode('utf-8')
+        except Exception as e:
+            logger.error(f"Error getting base64 content from Azure blob: {str(e)}")
+            # Try to fall back to local file if it exists
+            if file_id in file_registry:
+                pass  # Continue to local file logic
+            else:
+                return None
+    
+    # Original implementation for local files
     if file_id not in file_registry:
         return None
     
@@ -419,5 +699,5 @@ def get_file_content_base64(file_id):
         with open(file_path, 'rb') as f:
             return base64.b64encode(f.read()).decode('utf-8')
     except Exception as e:
-        print(f"Error encoding file: {str(e)}")
+        logger.error(f"Error encoding file: {str(e)}")
         return None 

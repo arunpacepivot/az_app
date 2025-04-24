@@ -169,6 +169,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600   # 100 MB
 
+# Azure Blob Storage settings
+AZURE_STORAGE_CONNECTION_STRING = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
+AZURE_CONTAINER_NAME = os.environ.get('AZURE_CONTAINER_NAME', 'tempfiles')
+AZURE_BLOB_EXPIRY_HOURS = 4  # Files expire after 4 hours
+
 # Increase timeouts for long-running processes
 # 15 minute timeout for requests
 REQUEST_TIMEOUT = 900
