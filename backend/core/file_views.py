@@ -1,4 +1,4 @@
-from django.http import JsonResponse, Http404, FileResponse
+from django.http import JsonResponse, Http404, FileResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view
@@ -9,11 +9,18 @@ from .file_service import (
     delete_file,
     get_file_metadata,
     file_registry,
+    azure_blob_registry,
     load_registry,
     get_temp_path,
     normalize_azure_path,
-    AZURE_TEMP_PATH
+    AZURE_TEMP_PATH,
+    get_blob_sas_url,
+    USE_AZURE_STORAGE,
+    save_registry
 )
+from django.utils import timezone
+from datetime import timedelta
+from django.conf import settings
 
 # Set up logger
 logger = logging.getLogger('file_service')
@@ -29,6 +36,80 @@ def create_response(data, status=200):
 @csrf_exempt
 @api_view(['GET', 'OPTIONS'])
 @require_http_methods(['GET', 'OPTIONS'])
+def direct_access_file(request, file_id):
+    """Directly access a file by ID, with fallbacks for reliability."""
+    if request.method == "OPTIONS":
+        return create_response({})
+    
+    logger.info(f"Direct file access requested: {file_id}")
+    
+    try:
+        # Check if file exists in the Django database (most reliable)
+        try:
+            from .models import StoredFile
+            stored_file = StoredFile.objects.get(file_id=file_id)
+            
+            # Update access count
+            stored_file.access_count += 1
+            
+            if stored_file.is_blob:
+                # Check if URL needs refresh
+                if stored_file.expires_at <= timezone.now():
+                    try:
+                        blob_url = get_blob_sas_url(stored_file.blob_name)
+                        stored_file.blob_url = blob_url
+                        stored_file.expires_at = timezone.now() + timedelta(hours=settings.AZURE_BLOB_EXPIRY_HOURS)
+                    except Exception as e:
+                        logger.error(f"Error refreshing DB blob URL: {str(e)}")
+                
+                stored_file.save()
+                logger.info(f"Redirecting to Azure blob from DB: {file_id}")
+                return HttpResponseRedirect(stored_file.blob_url)
+            else:
+                stored_file.save()
+                # For local files, fall back to standard handler
+                return download_file(request, file_id)
+                
+        except (ImportError, ModuleNotFoundError):
+            logger.warning("StoredFile model not available, falling back to registry")
+        except Exception as e:
+            logger.warning(f"Error accessing DB: {str(e)}, falling back to registry")
+        
+        # First check Azure blob registry
+        if USE_AZURE_STORAGE and file_id in azure_blob_registry:
+            blob_info = azure_blob_registry[file_id]
+            blob_url = blob_info['blob_url']
+            
+            # Check if URL is expired and refresh if needed
+            if blob_info['expires_at'] < timezone.now():
+                try:
+                    blob_url = get_blob_sas_url(blob_info['blob_name'])
+                    blob_info['blob_url'] = blob_url
+                    blob_info['expires_at'] = timezone.now() + timedelta(hours=settings.AZURE_BLOB_EXPIRY_HOURS)
+                    save_registry()
+                except Exception as e:
+                    logger.error(f"Error refreshing blob URL: {str(e)}")
+            
+            logger.info(f"Redirecting to Azure blob: {file_id}")
+            return HttpResponseRedirect(blob_url)
+        
+        # Then check local registry for files marked as is_azure_blob
+        if file_id in file_registry and file_registry[file_id].get('is_azure_blob', False):
+            blob_url = file_registry[file_id].get('blob_url')
+            if blob_url:
+                logger.info(f"Redirecting to blob URL from local registry: {file_id}")
+                return HttpResponseRedirect(blob_url)
+        
+        # Fall back to standard file handling
+        return download_file(request, file_id)
+        
+    except Exception as e:
+        logger.error(f"Error in direct file access: {str(e)}")
+        return create_response({"error": f"Error accessing file: {str(e)}"}, 500)
+
+@csrf_exempt
+@api_view(['GET', 'OPTIONS'])
+@require_http_methods(['GET', 'OPTIONS'])
 def download_file(request, file_id):
     """Stream a file for download."""
     if request.method == "OPTIONS":
@@ -39,7 +120,32 @@ def download_file(request, file_id):
     # Force reload of registry to ensure we have latest data
     load_registry()
     
-    # Check if file exists in registry
+    # First check if it's in the Azure blob registry
+    if USE_AZURE_STORAGE and file_id in azure_blob_registry:
+        blob_info = azure_blob_registry[file_id]
+        blob_url = blob_info['blob_url']
+        
+        # Check if URL is expired and refresh if needed
+        if blob_info['expires_at'] < timezone.now():
+            try:
+                blob_url = get_blob_sas_url(blob_info['blob_name'])
+                blob_info['blob_url'] = blob_url
+                blob_info['expires_at'] = timezone.now() + timedelta(hours=settings.AZURE_BLOB_EXPIRY_HOURS)
+                save_registry()
+            except Exception as e:
+                logger.error(f"Error refreshing blob URL: {str(e)}")
+        
+        logger.info(f"Redirecting to Azure blob: {file_id}")
+        return HttpResponseRedirect(blob_url)
+    
+    # Then check local registry for files marked as is_azure_blob
+    if file_id in file_registry and file_registry[file_id].get('is_azure_blob', False):
+        blob_url = file_registry[file_id].get('blob_url')
+        if blob_url:
+            logger.info(f"Redirecting to blob URL from local registry: {file_id}")
+            return HttpResponseRedirect(blob_url)
+    
+    # Check if file exists in the local registry
     if file_id not in file_registry:
         logger.warning(f"File ID not found in registry: {file_id}")
         # Add debugging for available files

@@ -146,22 +146,32 @@ def get_blob_sas_url(blob_name, expiry_time=None):
         expiry_time = datetime.utcnow() + timedelta(hours=AZURE_BLOB_EXPIRY_HOURS)
     
     try:
-        # Get blob service client
-        client = get_blob_service_client()
+        # Parse connection string to extract account info
+        conn_str = AZURE_STORAGE_CONNECTION_STRING
+        # Split connection string and convert to dictionary
+        parts = {
+            part.split('=', 1)[0]: part.split('=', 1)[1]
+            for part in conn_str.split(';')
+            if '=' in part
+        }
         
-        # Get account name from connection string
-        account_name = client.account_name
+        account_name = parts.get('AccountName')
+        account_key = parts.get('AccountKey')
         
-        # Create SAS token with read permission
+        if not account_name or not account_key:
+            raise ValueError("Connection string missing AccountName or AccountKey")
+            
+        # Generate SAS token with explicit account key
         sas_token = generate_blob_sas(
             account_name=account_name,
             container_name=AZURE_CONTAINER_NAME,
             blob_name=blob_name,
+            account_key=account_key,
             permission=BlobSasPermissions(read=True),
             expiry=expiry_time
         )
         
-        # Construct the full URL including SAS token
+        # Build URL
         blob_url = f"https://{account_name}.blob.core.windows.net/{AZURE_CONTAINER_NAME}/{blob_name}?{sas_token}"
         return blob_url
         
