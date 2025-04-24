@@ -15,8 +15,8 @@ class StoredFile(models.Model):
     class Meta:
         app_label = 'core'
         indexes = [
-            models.Index(fields=['expires_at']),
-            models.Index(fields=['filename']),
+            models.Index(fields=['expires_at'], name='core_sf_expires_idx'),
+            models.Index(fields=['filename'], name='core_sf_filename_idx'),
         ]
         
     def __str__(self):
