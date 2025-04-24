@@ -6,7 +6,6 @@ import { Upload, ArrowDown, Eye } from 'lucide-react';
 import { CerebroResponse, CerebroFile } from '@/lib/api/types';
 import { cerebroService } from '@/lib/api/services/cerebro.service';
 import { getErrorDetails } from '@/lib/utils/error-handler';
-import { getFileDownloadUrl } from '@/lib/api/utils';
 
 import { EnhancedDataTable } from '@/components/ui/enhanced-data-table';
 import { Spinner } from '@/components/shared/Spinner';
@@ -475,15 +474,28 @@ export function CerebroForm() {
         fileData = processedDataObj.data.data.file as unknown as CerebroFile;
       }
       
-      if (!fileData || !fileData.file_id) {
+      if (!fileData) {
+        console.error('Missing file data in response:', fileData);
+        alert('Error: File data is missing. Cannot download the file.');
+        return;
+      }
+      
+      // Check if we have a direct URL first
+      if (fileData.url && (fileData.url.startsWith('http://') || fileData.url.startsWith('https://'))) {
+        console.log('Using direct URL for download:', fileData.url);
+        window.open(fileData.url, '_blank');
+        return;
+      }
+      
+      if (!fileData.file_id) {
         console.error('Missing file_id in file object:', fileData);
         alert('Error: File ID is missing. Cannot download the file.');
         return;
       }
       
-      // Always use file_id for downloading
-      const downloadUrl = getFileDownloadUrl(fileData.file_id);
-      console.log('Generated download URL with file_id:', downloadUrl);
+      // Use the service function with both file_id and url
+      const downloadUrl = cerebroService.downloadCerebroFile(fileData.file_id, fileData.url);
+      console.log('Generated download URL:', downloadUrl);
       
       window.open(downloadUrl, '_blank');
     } catch (error) {

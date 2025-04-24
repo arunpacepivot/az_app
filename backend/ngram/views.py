@@ -57,15 +57,15 @@ def process_ngram(request):
             return create_response(request, {"error": "Failed to generate output files"}, 500)
         
         # Save files to file service and get their IDs
-        file_id_sk = save_temp_file(output_file_path_sk, f"ngram_analysis_results_by_asin_sk_{file.name}")
-        file_id_mk = save_temp_file(output_file_path_mk, f"ngram_analysis_results_by_asin_mk_{file.name}")
+        file_result_sk = save_temp_file(output_file_path_sk, f"ngram_analysis_results_by_asin_sk_{file.name}")
+        file_result_mk = save_temp_file(output_file_path_mk, f"ngram_analysis_results_by_asin_mk_{file.name}")
         
         # Extract data from the output Excel files for JSON response
         result_data = {}
         
         # Read B0 ASINs data
-        sk_data = get_excel_data(file_id_sk)
-        mk_data = get_excel_data(file_id_mk)
+        sk_data = get_excel_data(file_result_sk['file_id'])
+        mk_data = get_excel_data(file_result_mk['file_id'])
         
         if sk_data:
             for sheet_name, sheet_data in sk_data.items():
@@ -92,15 +92,15 @@ def process_ngram(request):
             'data': result_data,
             'files': [
                 {
-                    'filename': f"ngram_analysis_results_by_asin_sk_{file.name}",
-                    'url': get_file_url(file_id_sk, request),
-                    'file_id': file_id_sk,
+                    'filename': file_result_sk['filename'],
+                    'url': file_result_sk.get('url') or get_file_url(file_result_sk['file_id'], request),
+                    'file_id': file_result_sk['file_id'],
                     'type': 'B0 ASINs'
                 },
                 {
-                    'filename': f"ngram_analysis_results_by_asin_mk_{file.name}",
-                    'url': get_file_url(file_id_mk, request), 
-                    'file_id': file_id_mk,
+                    'filename': file_result_mk['filename'],
+                    'url': file_result_mk.get('url') or get_file_url(file_result_mk['file_id'], request),
+                    'file_id': file_result_mk['file_id'],
                     'type': 'Non-B0 ASINs'
                 }
             ]

@@ -335,7 +335,8 @@ def save_temp_file(file_obj, custom_filename=None):
             # Log the success
             logger.info(f"File saved to Azure: ID={file_id}, blob={blob_name}")
             
-            return file_id
+            # Return both file_id and URL
+            return {"file_id": file_id, "url": blob_url, "filename": display_filename}
             
         except Exception as e:
             logger.error(f"Azure upload failed: {str(e)}")
@@ -377,8 +378,9 @@ def save_temp_file(file_obj, custom_filename=None):
                 logger.info(f"Existing file path saved to database with ID: {file_id}")
             except Exception as e:
                 logger.error(f"Error saving existing path to database: {str(e)}")
-                
-        return file_id
+        
+        # Return file_id only for local files
+        return {"file_id": file_id, "filename": os.path.basename(file_obj)}
     
     # Save file from request.FILES or similar
     if hasattr(file_obj, 'chunks'):
@@ -427,7 +429,8 @@ def save_temp_file(file_obj, custom_filename=None):
     # Save the updated registry
     save_registry()
     
-    return file_id
+    # Return only file_id for local files
+    return {"file_id": file_id, "filename": filename}
 
 def cleanup_old_files():
     """Clean up expired or least accessed files if registry is too large."""

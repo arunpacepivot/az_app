@@ -6,7 +6,6 @@ import { useProcessSqp } from '@/lib/hooks/queries/use-sqp'
 import { getErrorDetails } from '@/lib/utils/error-handler'
 import { SqpResponse, SqpFile } from '@/lib/api/types'
 import { sqpService } from '@/lib/api/services/sqp.service'
-import { getFileDownloadUrl } from '@/lib/api/utils'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -241,15 +240,22 @@ export function SqpForm() {
       
       const fileData = processedData.data.file;
       
+      // Check if we have a direct URL first
+      if (fileData.url && (fileData.url.startsWith('http://') || fileData.url.startsWith('https://'))) {
+        console.log('Using direct URL for download:', fileData.url);
+        window.open(fileData.url, '_blank');
+        return;
+      }
+      
       if (!fileData.file_id) {
         console.error('Missing file_id in file object:', fileData);
         alert('Error: File ID is missing. Cannot download the file.');
         return;
       }
       
-      // Always use file_id for downloading
-      const downloadUrl = getFileDownloadUrl(fileData.file_id);
-      console.log('Generated download URL with file_id:', downloadUrl);
+      // Use the service function with both file_id and url
+      const downloadUrl = sqpService.downloadSqpFile(fileData.file_id, fileData.url);
+      console.log('Generated download URL:', downloadUrl);
       
       // Open in new tab for reliable downloading
       window.open(downloadUrl, '_blank');

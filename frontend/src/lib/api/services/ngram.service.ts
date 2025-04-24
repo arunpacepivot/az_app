@@ -50,14 +50,20 @@ export const ngramService = {
   /**
    * Download file using file_id
    */
-  downloadNgramFile: (fileId: string): string => {
+  downloadNgramFile: (fileId: string, url?: string): string => {
+    // If direct URL is provided, use it instead of file_id
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      console.log(`Using direct download URL: ${url}`);
+      return url;
+    }
+    
     if (!fileId) {
       console.error('Invalid file ID for download:', fileId);
       throw new Error('Invalid file ID for download');
     }
     
-    const url = getFileDownloadUrl(fileId);
-    console.log(`Generating download URL for file ${fileId}: ${url}`);
-    return url;
+    const downloadUrl = getFileDownloadUrl(fileId);
+    console.log(`Generating download URL for file ${fileId}: ${downloadUrl}`);
+    return downloadUrl;
   }
 }; 

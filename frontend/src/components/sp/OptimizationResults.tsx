@@ -5,7 +5,7 @@ import { SpAdsResponse } from '@/lib/api/types'
 import { Buffer } from 'buffer'
 import { DataTable } from "@/components/ui/data-table"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { getFileDownloadUrl } from '@/lib/api/utils'
+import { spService } from '@/lib/api/services/sp.service'
 import { useMemo, useState, useCallback, useEffect } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -45,14 +45,14 @@ export function OptimizationResults({ processedData, previewOpen, setPreviewOpen
       // Check for the file property (new structure)
       if (processedData.file) {
         console.log('Using file property:', processedData.file);
-        if (processedData.file.file_id) {
-          const downloadUrl = getFileDownloadUrl(processedData.file.file_id);
-          console.log('Downloading via file_id:', processedData.file.file_id);
-          window.open(downloadUrl, '_blank');
-          return;
-        } else if (processedData.file.url) {
+        if (processedData.file.url && (processedData.file.url.startsWith('http://') || processedData.file.url.startsWith('https://'))) {
           console.log('Downloading via direct URL:', processedData.file.url);
           window.open(processedData.file.url, '_blank');
+          return;
+        } else if (processedData.file.file_id) {
+          const downloadUrl = spService.downloadFile(processedData.file.file_id, processedData.file.url);
+          console.log('Downloading via file_id:', processedData.file.file_id);
+          window.open(downloadUrl, '_blank');
           return;
         }
       }
@@ -61,7 +61,7 @@ export function OptimizationResults({ processedData, previewOpen, setPreviewOpen
       if (processedData.excel_file) {
         // Use file_id if available (preferred approach)
         if (processedData.excel_file.file_id) {
-          const downloadUrl = getFileDownloadUrl(processedData.excel_file.file_id);
+          const downloadUrl = spService.downloadFile(processedData.excel_file.file_id);
           console.log('Downloading via excel_file.file_id:', processedData.excel_file.file_id);
           window.open(downloadUrl, '_blank');
           return;
@@ -91,7 +91,7 @@ export function OptimizationResults({ processedData, previewOpen, setPreviewOpen
       // Last resort - check if there's a file_id at the root level
       if (processedData.file_id) {
         console.log('Using root level file_id:', processedData.file_id);
-        const downloadUrl = getFileDownloadUrl(processedData.file_id);
+        const downloadUrl = spService.downloadFile(processedData.file_id);
         window.open(downloadUrl, '_blank');
         return;
       }

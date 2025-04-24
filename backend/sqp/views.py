@@ -83,11 +83,11 @@ def process_sqp(request):
             return create_response(request, {"error": "Failed to generate output file"}, 500)
         
         # Save file to file service and get its ID
-        file_id = save_temp_file(output_file_path, f"SQP_Analysis_{os.path.splitext(file.name)[0]}.xlsx")
-        logger.info(f"Saved output file with ID: {file_id}")
+        file_result = save_temp_file(output_file_path, f"SQP_Analysis_{os.path.splitext(file.name)[0]}.xlsx")
+        logger.info(f"Saved output file with ID: {file_result['file_id']}")
             
         # Extract data from the output Excel file for JSON response
-        result_data = get_excel_data(file_id)
+        result_data = get_excel_data(file_result['file_id'])
         
         # Remove the Keywords sheet since it's redundant with the keywords field
         if result_data and 'Keywords' in result_data:
@@ -98,9 +98,9 @@ def process_sqp(request):
             'data': result_data,
             'keywords': sqp_kw,
             'file': {
-                'filename': f"SQP_Analysis_{os.path.splitext(file.name)[0]}.xlsx",
-                'url': get_file_url(file_id, request),
-                'file_id': file_id
+                'filename': file_result['filename'],
+                'url': file_result.get('url') or get_file_url(file_result['file_id'], request),
+                'file_id': file_result['file_id']
             }
         }
         

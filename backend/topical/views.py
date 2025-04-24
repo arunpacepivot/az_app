@@ -67,11 +67,11 @@ def process_topical(request):
             return create_response(request, {"error": "Failed to generate output file"}, 500)
         
         # Save file to file service and get its ID
-        file_id = save_temp_file(output_file_path, f"ASIN_Top_80_Percent_Data_{file.name}")
-        logger.info(f"Saved output file with ID: {file_id}")
+        file_result = save_temp_file(output_file_path, f"ASIN_Top_80_Percent_Data_{file.name}")
+        logger.info(f"Saved output file with ID: {file_result['file_id']}")
             
         # Extract data from the output Excel file for JSON response
-        result_data = get_excel_data(file_id)
+        result_data = get_excel_data(file_result['file_id'])
         
         # Create response with file URL and JSON data
         response_data = {
@@ -81,9 +81,9 @@ def process_topical(request):
             'non_b0_asin_count': result.get('non_b0_asin_count', 0),
             'data': result_data,
             'file': {
-                'filename': f"ASIN_Top_80_Percent_Data_{file.name}",
-                'url': get_file_url(file_id, request),
-                'file_id': file_id
+                'filename': file_result['filename'],
+                'url': file_result.get('url') or get_file_url(file_result['file_id'], request),
+                'file_id': file_result['file_id']
             }
         }
         

@@ -5,7 +5,6 @@ import { useProcessNgram } from '@/lib/hooks/queries/use-ngram'
 import { getErrorDetails } from '@/lib/utils/error-handler'
 import { NgramResponse, NgramFile } from '@/lib/api/types'
 import { ngramService } from '@/lib/api/services/ngram.service'
-import { getFileDownloadUrl } from '@/lib/api/utils'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -280,18 +279,25 @@ export function NgramForm() {
     try {
       console.log('Downloading file:', file);
       
+      // Check if we have a direct URL first
+      if (file.url && (file.url.startsWith('http://') || file.url.startsWith('https://'))) {
+        console.log('Using direct URL for download:', file.url);
+        window.open(file.url, '_blank');
+        return;
+      }
+      
       if (!file.file_id) {
         console.error('Missing file_id in file object:', file);
         alert('Error: File ID is missing. Cannot download the file.');
         return;
       }
       
-      // Always use file_id for downloading
-      const downloadUrl = getFileDownloadUrl(file.file_id);
-      console.log('Generated download URL with file_id:', downloadUrl);
+      // Use the service function with both file_id and url
+      const serviceUrl = ngramService.downloadNgramFile(file.file_id, file.url);
+      console.log('Generated download URL:', serviceUrl);
       
       // Open in new tab for reliable downloading
-      window.open(downloadUrl, '_blank');
+      window.open(serviceUrl, '_blank');
     } catch (error) {
       console.error('Error downloading file:', error);
       alert('There was an error downloading the file. Please try again.');

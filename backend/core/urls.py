@@ -19,7 +19,7 @@ from django.http import JsonResponse
 from django.contrib import admin
 from lister.views import get_csrf  # Import the CSRF view directly
 from sp.views import get_csrf, optimize_all  # Import the CSRF view and optimize_all view
-from .file_views import download_file, file_info, remove_file, direct_access_file  # Import file API views
+from .file_views import download_file, file_info, remove_file  # Import file API views
 
 # Root view
 def api_root(request):
@@ -46,7 +46,6 @@ def api_root(request):
 # File API patterns
 file_api_patterns = [
     path('download/<str:file_id>/', download_file, name='download_file'),
-    path('direct/<str:file_id>/', direct_access_file, name='direct_access_file'),
     path('info/<str:file_id>/', file_info, name='file_info'),
     path('delete/<str:file_id>/', remove_file, name='remove_file'),
 ]

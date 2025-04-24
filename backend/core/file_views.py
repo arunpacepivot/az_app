@@ -135,8 +135,13 @@ def download_file(request, file_id):
             except Exception as e:
                 logger.error(f"Error refreshing blob URL: {str(e)}")
         
-        logger.info(f"Redirecting to Azure blob: {file_id}")
-        return HttpResponseRedirect(blob_url)
+        logger.info(f"Providing Azure blob URL: {file_id}")
+        # Return URL instead of redirecting
+        return create_response({
+            "url": blob_url,
+            "filename": blob_info.get('filename', 'download'),
+            "file_id": file_id
+        })
     
     # Then check local registry for files marked as is_azure_blob
     if file_id in file_registry and file_registry[file_id].get('is_azure_blob', False):

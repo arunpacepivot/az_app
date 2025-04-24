@@ -30,7 +30,18 @@ export const cerebroService = {
   /**
    * Download file using file_id
    */
-  downloadCerebroFile: (fileId: string): string => {
+  downloadCerebroFile: (fileId: string, url?: string): string => {
+    // If direct URL is provided, use it instead of file_id
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      console.log(`Using direct download URL: ${url}`);
+      return url;
+    }
+    
+    if (!fileId) {
+      console.error('Invalid file ID for download:', fileId);
+      throw new Error('Invalid file ID for download');
+    }
+    
     return getFileDownloadUrl(fileId);
   }
 }; 

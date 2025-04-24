@@ -367,12 +367,15 @@ export function TopicalForm() {
       try {
         // Check if we have a direct URL first
         if (processedData.data.file.url && 
-           (processedData.data.file.url.startsWith('http://') || 
-            processedData.data.file.url.startsWith('https://'))) {
+            (processedData.data.file.url.startsWith('http://') || 
+             processedData.data.file.url.startsWith('https://'))) {
           window.open(processedData.data.file.url, '_blank');
         } else if (processedData.data.file.file_id) {
-          // Fallback to using the service with the file_id
-          const downloadUrl = topicalService.downloadTopicalFile(processedData.data.file.file_id);
+          // Pass both file_id and url (if available) to the service
+          const downloadUrl = topicalService.downloadTopicalFile(
+            processedData.data.file.file_id,
+            processedData.data.file.url
+          );
           window.open(downloadUrl, '_blank');
         } else {
           throw new Error('No valid download URL or file ID found');
