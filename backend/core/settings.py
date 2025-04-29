@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'ngram',
     'topical',
     'logger',
+    'amazon_seller',
 ]
 
 MIDDLEWARE = [
@@ -178,6 +179,26 @@ AZURE_BLOB_EXPIRY_HOURS = 4  # Files expire after 4 hours
 # Increase timeouts for long-running processes
 # 15 minute timeout for requests
 REQUEST_TIMEOUT = 900
+
+# Amazon Seller OAuth settings
+AMAZON_CLIENT_ID = os.environ.get('AMAZON_CLIENT_ID', '')
+AMAZON_CLIENT_SECRET = os.environ.get('AMAZON_CLIENT_SECRET', '')
+AMAZON_REDIRECT_URI = os.environ.get('AMAZON_REDIRECT_URI', '')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+# Celery beat schedule for Amazon token refresh (only if Celery is installed)
+CELERY_BEAT_SCHEDULE = {}
+try:
+    from celery.schedules import crontab
+    
+    # Add our task to the schedule
+    CELERY_BEAT_SCHEDULE['refresh-amazon-tokens'] = {
+        'task': 'amazon_seller.tasks.refresh_amazon_tokens',
+        'schedule': crontab(minute='*/15'),  # Run every 15 minutes
+    }
+except ImportError:
+    # Celery not installed, don't schedule the task
+    pass
 
 # Django REST Framework settings 
 REST_FRAMEWORK = {

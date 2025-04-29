@@ -39,7 +39,8 @@ def api_root(request):
             "topical": "/api/v1/topical/",
             "files": "/api/v1/files/",
             "optimize_all": "/api/v1/optimize/all/",
-            "logger": "/api/v1/logger/"
+            "logger": "/api/v1/logger/",
+            "amazon_seller": "/api/v1/amazon/"
         }
     })
 
@@ -64,6 +65,7 @@ api_v1_patterns = [
     path('files/', include((file_api_patterns, 'files'))),
     path('optimize/all/', optimize_all, name='optimize_all'),
     path('logger/', include('logger.urls')),
+    path('amazon/', include('amazon_seller.urls')),
 ]
 
 urlpatterns = [

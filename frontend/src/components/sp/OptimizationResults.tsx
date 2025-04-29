@@ -54,9 +54,10 @@ export function OptimizationResults({ processedData, previewOpen, setPreviewOpen
           console.log('Downloading via file_id:', processedData.file.file_id);
           window.open(downloadUrl, '_blank');
           return;
+
         }
       }
-      
+  
       // Check for excel_file property (old structure)
       if (processedData.excel_file) {
         // Use file_id if available (preferred approach)
