@@ -183,7 +183,8 @@ REQUEST_TIMEOUT = 900
 # Amazon Seller OAuth settings
 AMAZON_CLIENT_ID = os.environ.get('AMAZON_CLIENT_ID', '')
 AMAZON_CLIENT_SECRET = os.environ.get('AMAZON_CLIENT_SECRET', '')
-AMAZON_REDIRECT_URI = os.environ.get('AMAZON_REDIRECT_URI', '')
+AMAZON_REDIRECT_URI = os.environ.get('AMAZON_REDIRECT_URI', 'http://localhost:8000/api/v1/amazon/auth/callback')
+AMAZON_ADVERTISING_REDIRECT_URI = os.environ.get('AMAZON_ADVERTISING_REDIRECT_URI', 'http://localhost:8000/api/v1/amazon/advertising/auth/callback')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 # Celery beat schedule for Amazon token refresh (only if Celery is installed)

@@ -7,13 +7,15 @@ import { useEffect } from 'react'
 import { apiService } from '@/lib/services/api'
 import { Button } from '@/components/ui/button'
 import { AdvertisingAccounts } from '@/components/amazon/AdvertisingAccounts'
+import { useConnectAmazonAdvertising } from '@/lib/hooks/queries/use-amazon-advertising'
 
 export default function Dashboard() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [connectivityResult, setConnectivityResult] = useState<string | null>(null)
   const [connectivityError, setConnectivityError] = useState<string | null>(null)
-  const [isConnectingAmazon, setIsConnectingAmazon] = useState(false)
+  
+  const { mutate: connectAmazonAdvertising, isPending: isConnectingAmazon } = useConnectAmazonAdvertising()
 
   useEffect(() => {
     if (!loading && !user) {
@@ -33,26 +35,22 @@ export default function Dashboard() {
     }
   }
 
-  const handleConnectAmazonAdvertising = async () => {
-    try {
-      setIsConnectingAmazon(true)
-      // Call backend to initiate Amazon Advertising OAuth flow
-      const response = await fetch(`/api/amazon/advertising/auth/init?user_id=${user?.uid}&region=EU&scopes=advertising::campaign_management`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to initialize Amazon Advertising authorization')
+  const handleConnectAmazonAdvertising = () => {
+    if (!user) return
+    
+    connectAmazonAdvertising(
+      { userId: user.uid },
+      {
+        onSuccess: (data) => {
+          // Redirect user to Amazon authorization URL
+          window.location.href = data.authorization_url
+        },
+        onError: (error) => {
+          console.error('Amazon Advertising connection error:', error)
+          setConnectivityError(`Failed to connect to Amazon Advertising: ${error.message}`)
+        }
       }
-      
-      const data = await response.json()
-      
-      // Redirect user to Amazon authorization URL
-      window.location.href = data.authorization_url
-    } catch (error) {
-      console.error('Amazon Advertising connection error:', error)
-      setConnectivityError('Failed to connect to Amazon Advertising')
-    } finally {
-      setIsConnectingAmazon(false)
-    }
+    )
   }
 
   if (loading) {

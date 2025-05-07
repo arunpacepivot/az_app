@@ -10,10 +10,15 @@ export default function AmazonAdvertisingSuccess() {
   const [profiles, setProfiles] = useState<string[]>([])
 
   useEffect(() => {
-    // Get profiles from URL query parameters
+    // Get profiles from URL query parameters - handle both formats from the backend
     const profilesParam = searchParams.get('profiles')
+    const profileIdParam = searchParams.get('profile_id')
+    
     if (profilesParam) {
       setProfiles(profilesParam.split(','))
+    } else if (profileIdParam) {
+      // If we receive a single profile_id parameter
+      setProfiles([profileIdParam])
     }
   }, [searchParams])
 

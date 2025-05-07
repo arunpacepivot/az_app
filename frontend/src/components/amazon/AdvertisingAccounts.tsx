@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/lib/context/AuthContext'
+import { useAmazonAdvertisingProfiles } from '@/lib/hooks/queries/use-amazon-advertising'
 
 type AdvertisingProfile = {
   profileId: string
@@ -15,46 +14,7 @@ type AdvertisingProfile = {
 }
 
 export function AdvertisingAccounts() {
-  const { user } = useAuth()
-  const [profiles, setProfiles] = useState<AdvertisingProfile[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      if (!user) {
-        setIsLoading(false)
-        setError('Authentication required')
-        return
-      }
-      
-      try {
-        setIsLoading(true)
-        // Get the user's ID token for authentication
-        const idToken = await user.getIdToken()
-        
-        const response = await fetch('/api/amazon/advertising/profiles', {
-          headers: {
-            'Authorization': `Bearer ${idToken}`
-          }
-        })
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch advertising profiles')
-        }
-        
-        const data = await response.json()
-        setProfiles(data)
-      } catch (error) {
-        console.error('Error fetching advertising profiles:', error)
-        setError('Failed to load your Amazon Advertising accounts')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchProfiles()
-  }, [user])
+  const { data: profiles, isLoading, error, isError } = useAmazonAdvertisingProfiles()
 
   if (isLoading) {
     return (
@@ -64,15 +24,15 @@ export function AdvertisingAccounts() {
     )
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="p-4 rounded-md bg-red-50 text-red-600">
-        {error}
+        {error?.message || 'Failed to load your Amazon Advertising accounts'}
       </div>
     )
   }
 
-  if (profiles.length === 0) {
+  if (!profiles || profiles.length === 0) {
     return (
       <div className="p-4 rounded-md bg-gray-50 text-gray-600">
         No Amazon Advertising accounts connected.

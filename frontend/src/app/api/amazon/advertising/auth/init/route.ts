@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const scopes = searchParams.get('scopes') || 'advertising::campaign_management';
 
     // Construct the backend API URL with query parameters
-    const backendUrl = new URL(`${BACKEND_URL}/amazon/advertising/auth/init`);
+    const backendUrl = new URL(`${BACKEND_URL}/api/v1/amazon/advertising/auth/init`);
     
     if (user_id) backendUrl.searchParams.append('user_id', user_id);
     if (region) backendUrl.searchParams.append('region', region);
@@ -27,7 +27,16 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      // Handle non-JSON responses gracefully
+      let errorData;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        errorData = await response.json();
+      } else {
+        const text = await response.text();
+        errorData = { error: `Server error: ${text.substring(0, 100)}...` };
+      }
+      
       return NextResponse.json(
         { error: errorData.error || 'Failed to initialize Amazon Advertising authorization' },
         { status: response.status }

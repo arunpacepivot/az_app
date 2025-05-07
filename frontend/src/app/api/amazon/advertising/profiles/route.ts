@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split(' ')[1];
 
     // Forward the request to the backend with the token
-    const response = await fetch(`${BACKEND_URL}/amazon/api/advertising/profiles`, {
+    const response = await fetch(`${BACKEND_URL}/api/v1/amazon/advertising/profiles`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -32,7 +32,16 @@ export async function GET(request: NextRequest) {
         return NextResponse.json([]);
       }
 
-      const errorData = await response.json();
+      // Handle non-JSON responses gracefully
+      let errorData;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        errorData = await response.json();
+      } else {
+        const text = await response.text();
+        errorData = { error: `Server error: ${text.substring(0, 100)}...` };
+      }
+
       return NextResponse.json(
         { error: errorData.error || 'Failed to fetch Amazon Advertising profiles' },
         { status: response.status }

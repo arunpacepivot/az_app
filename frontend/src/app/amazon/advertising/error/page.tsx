@@ -10,10 +10,14 @@ export default function AmazonAdvertisingError() {
   const [errorMessage, setErrorMessage] = useState('An error occurred during the Amazon Advertising connection process.')
 
   useEffect(() => {
-    // Get error from URL query parameters
-    const error = searchParams.get('error')
-    if (error) {
-      setErrorMessage(error)
+    // Get error from URL query parameters - backend uses 'message'
+    const messageParam = searchParams.get('message')
+    const errorParam = searchParams.get('error')
+    
+    if (messageParam) {
+      setErrorMessage(messageParam)
+    } else if (errorParam) {
+      setErrorMessage(errorParam)
     }
   }, [searchParams])
 
