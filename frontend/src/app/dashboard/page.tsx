@@ -5,12 +5,15 @@ import { useAuth } from '@/lib/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { apiService } from '@/lib/services/api'
+import { Button } from '@/components/ui/button'
+import { AdvertisingAccounts } from '@/components/amazon/AdvertisingAccounts'
 
 export default function Dashboard() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [connectivityResult, setConnectivityResult] = useState<string | null>(null)
   const [connectivityError, setConnectivityError] = useState<string | null>(null)
+  const [isConnectingAmazon, setIsConnectingAmazon] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -27,6 +30,28 @@ export default function Dashboard() {
       console.error('Connectivity test error:', error)
       setConnectivityError('Connectivity test failed')
       setConnectivityResult(null)
+    }
+  }
+
+  const handleConnectAmazonAdvertising = async () => {
+    try {
+      setIsConnectingAmazon(true)
+      // Call backend to initiate Amazon Advertising OAuth flow
+      const response = await fetch(`/api/amazon/advertising/auth/init?user_id=${user?.uid}&region=EU&scopes=advertising::campaign_management`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to initialize Amazon Advertising authorization')
+      }
+      
+      const data = await response.json()
+      
+      // Redirect user to Amazon authorization URL
+      window.location.href = data.authorization_url
+    } catch (error) {
+      console.error('Amazon Advertising connection error:', error)
+      setConnectivityError('Failed to connect to Amazon Advertising')
+    } finally {
+      setIsConnectingAmazon(false)
     }
   }
 
@@ -62,26 +87,52 @@ export default function Dashboard() {
               <p className="text-gray-600">Last login: {user?.metadata.lastSignInTime}</p>
             </div>
           </div>
-          
-          <div className="mt-8">
-            <button 
-              onClick={handleConnectivityTest}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-500"
-            >
-              Test Backend Connectivity
-            </button>
-            
-            {connectivityResult && (
-              <div className="mt-4 p-4 bg-green-100 text-green-800 rounded">
-                {connectivityResult}
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="p-6 rounded-xl bg-white shadow-sm border border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Integrations</h2>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-800 mb-2">Amazon Advertising</h3>
+                  <p className="text-gray-600 mb-3">Connect your Amazon Advertising account to manage campaigns and track performance.</p>
+                  <Button 
+                    onClick={handleConnectAmazonAdvertising}
+                    disabled={isConnectingAmazon}
+                    variant="default"
+                    className="w-full sm:w-auto"
+                  >
+                    {isConnectingAmazon ? 'Connecting...' : 'Connect Amazon Advertising'}
+                  </Button>
+                </div>
+                
+                <div className="mt-6">
+                  <AdvertisingAccounts />
+                </div>
               </div>
-            )}
+            </div>
             
-            {connectivityError && (
-              <div className="mt-4 p-4 bg-red-100 text-red-800 rounded">
-                {connectivityError}
-              </div>
-            )}
+            <div className="p-6 rounded-xl bg-white shadow-sm border border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">API Connection</h2>
+              <Button 
+                onClick={handleConnectivityTest}
+                variant="outline"
+                className="mb-4"
+              >
+                Test Backend Connectivity
+              </Button>
+              
+              {connectivityResult && (
+                <div className="p-4 bg-green-100 text-green-800 rounded">
+                  {connectivityResult}
+                </div>
+              )}
+              
+              {connectivityError && (
+                <div className="p-4 bg-red-100 text-red-800 rounded">
+                  {connectivityError}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

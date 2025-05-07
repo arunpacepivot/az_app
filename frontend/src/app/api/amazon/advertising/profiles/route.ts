@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+// Get the backend URL from environment variables
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+export async function GET(request: NextRequest) {
+  try {
+    // Get authorization header from the client request
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    const token = authHeader.split(' ')[1];
+
+    // Forward the request to the backend with the token
+    const response = await fetch(`${BACKEND_URL}/amazon/api/advertising/profiles`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+    });
+
+    if (!response.ok) {
+      // If no connected accounts, return empty array instead of error
+      if (response.status === 404) {
+        return NextResponse.json([]);
+      }
+
+      const errorData = await response.json();
+      return NextResponse.json(
+        { error: errorData.error || 'Failed to fetch Amazon Advertising profiles' },
+        { status: response.status }
+      );
+    }
+
+    // Return the profiles from the backend
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error fetching Amazon Advertising profiles:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+} 
