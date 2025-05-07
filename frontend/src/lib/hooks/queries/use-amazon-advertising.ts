@@ -1,6 +1,9 @@
 import { useQuery, useMutation, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
 import { useAuth } from '@/lib/context/AuthContext';
 
+// Get the backend URL from environment variables
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 type AdvertisingProfile = {
   profileId: string;
   accountInfo?: {
@@ -24,6 +27,7 @@ type ConnectAmazonResponse = {
 
 /**
  * Hook to fetch Amazon Advertising profiles
+ * NOTE: This is currently disabled as the backend integration is still being set up
  */
 export const useAmazonAdvertisingProfiles = (): UseQueryResult<AdvertisingProfile[], Error> => {
   const { user } = useAuth();
@@ -38,7 +42,8 @@ export const useAmazonAdvertisingProfiles = (): UseQueryResult<AdvertisingProfil
       // Get the user's ID token for authentication
       const idToken = await user.getIdToken();
       
-      const response = await fetch('/api/amazon/advertising/profiles', {
+      // Use the backend URL with the correct API path
+      const response = await fetch(`${BACKEND_URL}/api/v1/amazon/advertising/profiles`, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
@@ -57,7 +62,7 @@ export const useAmazonAdvertisingProfiles = (): UseQueryResult<AdvertisingProfil
       
       return await response.json();
     },
-    enabled: !!user, // Only run the query if the user is authenticated
+    enabled: false, // Disabled for now until backend is ready
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });

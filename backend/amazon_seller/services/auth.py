@@ -79,9 +79,10 @@ class AmazonAuthService:
         }
         
         # Create URL with query parameters
+        logger.info(f"Params: {params}")
         auth_url = f"{base_url}?{urlencode(params)}"
         logger.info(f"Generated Amazon authorization URL for region {region}")
-        
+        logger.info(f"Auth URL: {auth_url}")
         return auth_url, state
     
     @classmethod
@@ -127,9 +128,10 @@ class AmazonAuthService:
         }
         
         # Create URL with query parameters
+        logger.info(f"Params Advertising: {params}")
         auth_url = f"{base_url}?{urlencode(params)}"
         logger.info(f"Generated Amazon Advertising authorization URL for region {region}")
-        
+        logger.info(f"Auth URL Advertising: {auth_url}")
         return auth_url, state
     
     @classmethod

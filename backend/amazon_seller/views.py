@@ -338,39 +338,39 @@ class AmazonAdvertisingCallbackView(View):
                 
                 ad_account, created = AmazonAdvertisingAccount.objects.update_or_create(
                     profile_id=generic_profile_id,
-                    defaults={
-                        'auth_code': auth_code,
-                        'access_token': token_data['access_token'],
-                        'refresh_token': token_data['refresh_token'],
-                        'token_type': token_data['token_type'],
-                        'token_expires_at': token_data['token_expires_at'],
-                        'region': region,
+                defaults={
+                    'auth_code': auth_code,
+                    'access_token': token_data['access_token'],
+                    'refresh_token': token_data['refresh_token'],
+                    'token_type': token_data['token_type'],
+                    'token_expires_at': token_data['token_expires_at'],
+                    'region': region,
                         'scopes': token_data.get('scopes', ''),
                         'is_active': True,
                         'user': user  # Link to user if available
-                    }
-                )
-                
+                }
+            )
+            
                 logger.info(f"Created generic advertising account: {generic_profile_id}")
-                
+            
                 # Clear the state and user_id from session
-                if 'amazon_adv_oauth_state' in request.session:
-                    del request.session['amazon_adv_oauth_state']
+            if 'amazon_adv_oauth_state' in request.session:
+                del request.session['amazon_adv_oauth_state']
                 if 'amazon_adv_oauth_user_id' in request.session:
                     del request.session['amazon_adv_oauth_user_id']
-                
-                # Redirect to frontend success page
-                if hasattr(settings, 'FRONTEND_URL'):
-                    redirect_url = f"{settings.FRONTEND_URL}/amazon/advertising/success?profile_id={generic_profile_id}"
-                    return HttpResponseRedirect(redirect_url)
-                else:
-                    # If no frontend URL is configured, return JSON response
-                    return JsonResponse({
-                        'success': True,
-                        'message': f"Successfully authenticated advertising account (generic)",
-                        'profile_id': generic_profile_id,
-                        'warning': f"Could not fetch profiles: {str(profile_error)}"
-                    })
+            
+            # Redirect to frontend success page
+            if hasattr(settings, 'FRONTEND_URL'):
+                redirect_url = f"{settings.FRONTEND_URL}/amazon/advertising/success?profile_id={generic_profile_id}"
+                return HttpResponseRedirect(redirect_url)
+            else:
+                # If no frontend URL is configured, return JSON response
+                return JsonResponse({
+                    'success': True,
+                    'message': f"Successfully authenticated advertising account (generic)",
+                    'profile_id': generic_profile_id,
+                    'warning': f"Could not fetch profiles: {str(profile_error)}"
+                })
                 
         except Exception as e:
             logger.error(f"Advertising OAuth callback error: {str(e)}")
