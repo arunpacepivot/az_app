@@ -1,0 +1,110 @@
+name: Backend Deployment
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_BACKEND_WEBAPP_NAME_PROD }}
+  AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE_PROD }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements/base.txt
+
+      - name: Create consolidated requirements
+        run: |
+          cd backend
+          cat requirements/base.txt requirements/production.txt > requirements.txt
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run System Checks
+        run: |
+          cd backend
+          python manage.py check
+
+      - name: Run Tests
+        run: |
+          cd backend
+          python manage.py test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements/base.txt
+
+      - name: Create consolidated requirements
+        run: |
+          cd backend
+          cat requirements/base.txt requirements/production.txt > requirements.txt
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Collect Static Files
+        run: |
+          cd backend
+          python manage.py collectstatic --noinput
+
+      - name: Create deployment package
+        run: |
+          cd backend
+          zip -r ../deploy.zip . -x "venv/*" "requirements/*" "__pycache__/*" "*.pyc" ".env" "*.sqlite3"
+
+      - name: Upload artifact for deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-app
+          path: deploy.zip
+          retention-days: 5
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: python-app
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ env.AZURE_PUBLISH_PROFILE }}
+          package: deploy.zip
+
