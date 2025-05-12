@@ -1,7 +1,7 @@
 import { 
   signInWithPopup, 
   GoogleAuthProvider, 
-  FacebookAuthProvider,
+  // FacebookAuthProvider,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
@@ -9,7 +9,7 @@ import {
 import { auth } from '@/lib/firebase'
 
 const googleProvider = new GoogleAuthProvider()
-const facebookProvider = new FacebookAuthProvider()
+// const facebookProvider = new FacebookAuthProvider()
 
 export const authService = {
   // Google Sign in
@@ -23,16 +23,16 @@ export const authService = {
     }
   },
 
-  // Facebook Sign in
-  signInWithFacebook: async () => {
-    if (!auth) throw new Error('Firebase auth not initialized');
-    try {
-      const result = await signInWithPopup(auth, facebookProvider)
-      return result.user
-    } catch (error) {
-      throw error
-    }
-  },
+  // Facebook Sign in can be added later
+  // signInWithFacebook: async () => {
+  //   if (!auth) throw new Error('Firebase auth not initialized');
+  //   try {
+  //     const result = await signInWithPopup(auth, facebookProvider)
+  //     return result.user
+  //   } catch (error) {
+  //     throw error
+  //   }
+  // },
 
   // Email/Password Sign up
   signUpWithEmail: async (email: string, password: string) => {

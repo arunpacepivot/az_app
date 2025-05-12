@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
-import { FaFacebook } from 'react-icons/fa'
+// import { FaFacebook } from 'react-icons/fa'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { authService } from '@/lib/services/auth'
 import { FirebaseError } from 'firebase/app'
@@ -74,22 +74,22 @@ export default function Login() {
     }
   }
 
-  const handleFacebookSignIn = async () => {
-    try {
-      setIsLoading(true)
-      setError('')
-      await authService.signInWithFacebook()
-      router.push('/dashboard')
-    } catch (error) {
-      if (error instanceof FirebaseError) {
-        setError(getErrorMessage(error))
-      } else {
-        setError('An unexpected error occurred')
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // const handleFacebookSignIn = async () => {
+  //   try {
+  //     setIsLoading(true)
+  //     setError('')
+  //     await authService.signInWithFacebook()
+  //     router.push('/dashboard')
+  //   } catch (error) {
+  //     if (error instanceof FirebaseError) {
+  //       setError(getErrorMessage(error))
+  //     } else {
+  //       setError('An unexpected error occurred')
+  //     }
+  //   } finally {
+  //     setIsLoading(false)
+  //   }
+  // }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -122,15 +122,6 @@ export default function Login() {
             >
               <FcGoogle className="h-5 w-5" />
               Continue with Google
-            </button>
-            <button
-              type="button"
-              onClick={handleFacebookSignIn}
-              disabled={isLoading}
-              className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#1877F2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1877F2]/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FaFacebook className="h-5 w-5" />
-              Continue with Facebook
             </button>
           </div>
 

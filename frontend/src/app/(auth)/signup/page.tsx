@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
-import { FaFacebook } from 'react-icons/fa'
+// import { FaFacebook } from 'react-icons/fa'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { authService } from '@/lib/services/auth'
 import { FirebaseError } from 'firebase/app'
@@ -80,23 +80,24 @@ export default function SignUp() {
       setIsLoading(false)
     }
   }
+  // can be added later
 
-  const handleFacebookSignIn = async () => {
-    try {
-      setIsLoading(true)
-      setError('')
-      await authService.signInWithFacebook()
-      router.push('/dashboard')
-    } catch (error) {
-      if (error instanceof FirebaseError) {
-        setError(getErrorMessage(error))
-      } else {
-        setError('An unexpected error occurred')
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // const handleFacebookSignIn = async () => {
+  //   try {
+  //     setIsLoading(true)
+  //     setError('')
+  //     await authService.signInWithFacebook()
+  //     router.push('/dashboard')
+  //   } catch (error) {
+  //     if (error instanceof FirebaseError) {
+  //       setError(getErrorMessage(error))
+  //     } else {
+  //       setError('An unexpected error occurred')
+  //     }
+  //   } finally {
+  //     setIsLoading(false)
+  //   }
+  // }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -130,7 +131,7 @@ export default function SignUp() {
               <FcGoogle className="h-5 w-5" />
               Continue with Google
             </button>
-            <button
+          { /* <button
               type="button"
               onClick={handleFacebookSignIn}
               disabled={isLoading}
@@ -138,7 +139,7 @@ export default function SignUp() {
             >
               <FaFacebook className="h-5 w-5" />
               Continue with Facebook
-            </button>
+            </button> */}
           </div>
 
           <div className="relative mb-8">

@@ -12,6 +12,9 @@ db.sqlite3
 db.sqlite3-journal
 media/
 staticfiles/
+# Virtual Environment
+venv/
+ENV/
 
 # Frontend
 node_modules/
@@ -30,3 +33,18 @@ next-env.d.ts
 
 # Git line ending settings
 * text=auto eol=lf
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env.*
+
+
+temp/
+backend/temp/*
+
+# Ignore drive folder with sensitive keys
+backend/drive/
