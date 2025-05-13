@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 const Footer = () => {
   return (
     <footer className="bg-black border-t">
@@ -7,12 +9,15 @@ const Footer = () => {
             © {new Date().getFullYear()} Pace Pivot Private Limited. All rights reserved.
           </div>
           <div className="flex space-x-6">
-            <a href="#" className="text-yellow-400 hover:text-gray-900">
+            <Link href="/support" className="text-yellow-400 hover:text-white">
+              Support
+            </Link>
+            {/* <a href="#" className="text-yellow-400 hover:text-white">
               Privacy Policy
             </a>
-            <a href="#" className="text-yellow-400 hover:text-gray-900">
+            <a href="#" className="text-yellow-400 hover:text-white">
               Terms of Service
-            </a>
+            </a> */}
           </div>
         </div>
       </div>
