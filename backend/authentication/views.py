@@ -1,5 +1,13 @@
 from django.shortcuts import render
-import pyrebase
+# Import pyrebase4 instead of pyrebase
+try:
+    import pyrebase
+except ImportError:
+    try:
+        import pyrebase4 as pyrebase
+    except ImportError:
+        raise ImportError("Please install pyrebase4: pip install pyrebase4")
+
 import os
 import json
 from django.conf import settings

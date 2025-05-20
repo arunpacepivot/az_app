@@ -1,6 +1,10 @@
 #!/bin/bash
 cd /home/site/wwwroot/backend
 
+# Create temp_files directory if it doesn't exist
+echo "Creating temp_files directory..."
+mkdir -p /home/site/wwwroot/temp_files
+
 # Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL..."
 sleep 3
