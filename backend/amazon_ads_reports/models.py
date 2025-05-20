@@ -76,6 +76,7 @@ class ReportType(models.Model):
     ad_product = models.CharField(max_length=50, help_text="Ad product type (e.g., SPONSORED_PRODUCTS)")
     metrics = models.JSONField(help_text="List of available metrics for this report type")
     time_unit = models.CharField(max_length=20, default="DAILY", help_text="Time unit for report data")
+    default_group_by = models.JSONField(null=True, blank=True, help_text="Default groupBy dimensions for the report")
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -105,7 +106,7 @@ class AdsReport(models.Model):
         ('FAILED', 'Failed'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
-    download_url = models.URLField(max_length=1024, null=True, blank=True)
+    download_url = models.TextField(null=True, blank=True, help_text="Amazon S3 pre-signed URL to download the report")
     error_message = models.TextField(null=True, blank=True)
     
     # Data storage status

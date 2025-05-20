@@ -11,12 +11,26 @@ export async function GET(request: NextRequest) {
     const region = searchParams.get('region') || 'EU';
     const scopes = searchParams.get('scopes') || 'advertising::campaign_management';
 
+    // Validate required parameters
+    if (!user_id) {
+      return NextResponse.json(
+        { error: 'Missing required parameter: user_id' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`Initializing Amazon Advertising auth for user_id: ${user_id}, region: ${region}, scopes: ${scopes}`);
+
     // Construct the backend API URL with query parameters
+    // This needs to exactly match the backend's endpoint structure
     const backendUrl = new URL(`${BACKEND_URL}/api/v1/amazon/advertising/auth/init`);
     
-    if (user_id) backendUrl.searchParams.append('user_id', user_id);
-    if (region) backendUrl.searchParams.append('region', region);
-    if (scopes) backendUrl.searchParams.append('scopes', scopes);
+    // Add the same query parameters
+    backendUrl.searchParams.append('region', region);
+    backendUrl.searchParams.append('scopes', scopes);
+    backendUrl.searchParams.append('user_id', user_id);
+
+    console.log(`Calling backend API: ${backendUrl.toString()}`);
 
     // Forward the request to the backend
     const response = await fetch(backendUrl.toString(), {
@@ -37,8 +51,10 @@ export async function GET(request: NextRequest) {
         errorData = { error: `Server error: ${text.substring(0, 100)}...` };
       }
       
+      console.error('Amazon Advertising auth error:', errorData);
+      
       return NextResponse.json(
-        { error: errorData.error || 'Failed to initialize Amazon Advertising authorization' },
+        { error: errorData.error || 'Failed to start Amazon Advertising authorization' },
         { status: response.status }
       );
     }

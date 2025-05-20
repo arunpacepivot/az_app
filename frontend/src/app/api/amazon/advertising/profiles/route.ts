@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
     
     const token = authHeader.split(' ')[1];
 
+    console.log('Fetching advertising profiles from backend');
+
     // Forward the request to the backend with the token
+    // This needs to exactly match the backend's endpoint structure
     const response = await fetch(`${BACKEND_URL}/api/v1/amazon/advertising/profiles`, {
       method: 'GET',
       headers: {
@@ -42,6 +45,8 @@ export async function GET(request: NextRequest) {
         errorData = { error: `Server error: ${text.substring(0, 100)}...` };
       }
 
+      console.error('Error fetching advertising profiles:', errorData);
+
       return NextResponse.json(
         { error: errorData.error || 'Failed to fetch Amazon Advertising profiles' },
         { status: response.status }
@@ -50,6 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Return the profiles from the backend
     const data = await response.json();
+    console.log(`Successfully fetched ${data.length || 0} advertising profiles`);
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching Amazon Advertising profiles:', error);

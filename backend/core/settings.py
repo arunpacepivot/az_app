@@ -226,8 +226,8 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'authentication.firebase_auth.FirebaseAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
+        # 'authentication.firebase_auth.FirebaseAuthentication',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',

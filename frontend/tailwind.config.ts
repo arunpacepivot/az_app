@@ -54,6 +54,10 @@ const config = {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
   			},
+            amazon: {
+                DEFAULT: '#ff9900',
+                dark: '#e88b00'
+            },
   			chart: {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',
