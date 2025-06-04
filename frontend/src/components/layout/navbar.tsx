@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
@@ -69,8 +70,17 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             {/* Logo */}
-            <Link href={user ? "/" : "/login"}>
-              <span className="flex-shrink-0 text-yellow-400 font-bold text-xl">PacePivot</span>
+            <Link href={user ? "/" : "/login"} className="flex items-center h-16">
+              <div className="relative h-10 w-40 bg-white/10 rounded-md p-1">
+                <Image
+                  src="/logo.jpg"
+                  alt="PacePivot Logo"
+                  fill
+                  sizes="(max-width: 768px) 120px, 160px"
+                  className="object-contain"
+                  priority
+                />
+              </div>
             </Link>
             
             {/* Main Navigation - Only shown when logged in */}
