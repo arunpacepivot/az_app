@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Frontend Deployment
 
 on:
   push:
@@ -13,20 +13,22 @@ env:
   AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE_PROD }}
 
 jobs:
-  build-and-deploy:
+  log-env:
     runs-on: ubuntu-latest
-    environment:
-      name: production
-
     steps:
-      # Step 0: Log Environment Info
       - name: Log Environment Info
         run: |
-          echo "Frontend Webapp Name: $AZURE_WEBAPP_NAME"
-          echo "Frontend Publish Profile: $AZURE_PUBLISH_PROFILE"
+          echo "::add-mask::$AZURE_WEBAPP_NAME"
+          echo "::add-mask::$AZURE_PUBLISH_PROFILE"
+          echo "AZURE_WEBAPP_NAME='$(echo $AZURE_WEBAPP_NAME | base64)'"
+          echo "AZURE_PUBLISH_PROFILE='$(echo $AZURE_PUBLISH_PROFILE | base64)'"
 
-      # Step 1: Checkout the repository
-      - uses: actions/checkout@v4
+  build:
+    needs: log-env
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       # Step 2: Set up Node.js version
       - name: Set up Node.js

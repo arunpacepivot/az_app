@@ -13,7 +13,18 @@ env:
   AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE_PROD }}
 
 jobs:
+  log-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log Environment Info
+        run: |
+          echo "::add-mask::$AZURE_WEBAPP_NAME"
+          echo "::add-mask::$AZURE_PUBLISH_PROFILE"
+          echo "AZURE_WEBAPP_NAME='$(echo $AZURE_WEBAPP_NAME | base64)'"
+          echo "AZURE_PUBLISH_PROFILE='$(echo $AZURE_PUBLISH_PROFILE | base64)'"
+
   test:
+    needs: log-env
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -95,11 +106,6 @@ jobs:
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
-      - name: Log Environment Info
-        run: |
-          echo "Backend Webapp Name: $AZURE_WEBAPP_NAME"
-          echo "Backend Publish Profile: $AZURE_PUBLISH_PROFILE"
-          
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
