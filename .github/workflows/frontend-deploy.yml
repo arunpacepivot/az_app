@@ -19,6 +19,12 @@ jobs:
       name: production
 
     steps:
+      # Step 0: Log Environment Info
+      - name: Log Environment Info
+        run: |
+          echo "Frontend Webapp Name: $AZURE_WEBAPP_NAME"
+          echo "Frontend Publish Profile: $AZURE_PUBLISH_PROFILE"
+
       # Step 1: Checkout the repository
       - uses: actions/checkout@v4
 

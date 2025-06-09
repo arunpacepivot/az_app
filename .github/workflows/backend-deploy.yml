@@ -95,6 +95,11 @@ jobs:
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
+      - name: Log Environment Info
+        run: |
+          echo "Backend Webapp Name: $AZURE_WEBAPP_NAME"
+          echo "Backend Publish Profile: $AZURE_PUBLISH_PROFILE"
+          
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
